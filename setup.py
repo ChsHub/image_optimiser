@@ -1,12 +1,12 @@
-from distutils.core import setup, Extension
-from utility.os_interface import get_cwd
+from distutils.core import setup
 
-module1 = Extension('demo',
-                    sources=[get_cwd()+'/butteraugli/'+'butteraugli.cc'])
-                             #get_cwd()+'/butteraugli/'+'butteraugli.h',
-                             #get_cwd()+'/butteraugli/'+'butteraugli_main.cc'])
-
-setup(name='PackageName',
-      version='1.0',
-      description='This is a demo package',
-      ext_modules=[module1])
+setup(
+    name='image_optimiser',
+    version='1.0',
+    description='Optimise image size',
+    author='Christian',
+    author_email='christian1193@web.com',
+    packages=['image_optimiser'],
+    install_requires=['scikit-image', 'opencv-python']
+)
+# C:\Python36-32\python.exe -m pip install -e .

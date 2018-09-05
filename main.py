@@ -1,101 +1,166 @@
-from logging import info, error
-from tempfile import NamedTemporaryFile
-from os.path import getsize
-# python.exe -m pip install scikit-image
+# python3
+#  python.exe -m pip install scikit-image
+#  sudo chmod -R a+rX /usr/local/lib/python3.4/
+from logging import info, error, exception
+from shutil import move
+from tempfile import TemporaryDirectory
+from time import sleep
 
 from PIL import Image
-
-# sudo chmod -R a+rX /usr/local/lib/python3.4/
+from opti import find_minimum
+from perception_ssim import get_perception, get_value
 from utility.logger import Logger
-from utility.os_interface import depth_search_files, delete_file, get_file_size, make_directory, move_file
-from os import rename
+from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, exists, \
+    write_file_data, read_file_data
 from utility.path_str import get_full_path
 from utility.utilities import format_bit
 from utility.utilities import remove_file_type, get_file_type
-from opti import find_minimum
-from perception_ssim import get_perception, get_value
 
 
-# python3
+def is_compressable(img, file, types, trash_path):
+    if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+        info("TRANSPARENT IMAGE")
 
-def clear_temp_dir():
-    for temp_file in depth_search_files("temp_img", ""):
-        if not delete_file(*temp_file):
-            raise RuntimeError
+        red, green, blue, alpha = img.split()
+        pixel_data = alpha.load()
+        color_sum = 0
+        for x in range(alpha.width):
+            for y in range(alpha.height):
+                color_sum += pixel_data[x, y]
+
+        return color_sum / (255 * alpha.width * alpha.height) > 0.99
+
+    elif file[0].endswith('TRASH'):
+        info('already compressed')
+        return False
+
+    elif exists(trash_path):
+        file_name = remove_file_type(file[1])
+        for extension in types:
+            if exists(get_full_path(trash_path, file_name + extension)):
+                return False
+
+    return True
 
 
-# file BytesIO object
-# def get_file_size(file):
-#   return file.tell()
+def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
+    info(get_full_path(*file))
+
+    make_directory('ascii')
+    temp_name = 'ascii/a' + get_file_type(file[1])
+    move(get_full_path(*file), temp_name)
+    write_file_data('log_files', 'a_image.log', data=get_full_path(*file))
+    trash_path = get_full_path(file[0], 'TRASH')
+
+    try:
+        img = Image.open(temp_name)
+
+        if is_compressable(img, file, types, trash_path):
+
+            img = img.convert("RGB")
+            old_file_size = get_file_size(temp_name)
+            info(str(file))
+
+            with TemporaryDirectory() as temp_path:
+                new_file = get_new_picture(img, temp_name, temp_path)
+                new_file_size = get_file_size(*new_file)
+                revert_temp_file(img, temp_name, file)
+
+                if old_file_size > new_file_size:
+
+                    make_directory(trash_path)
+                    move_file(file[0], trash_path, file[1])  # delete old file
+                    # rename and move new file
+                    move(get_full_path(new_file[0], new_file[1]),
+                         remove_file_type(get_full_path(file[0], file[1])) + get_file_type(new_file[1]))
+
+                    return old_file_size, new_file_size
+
+                else:
+                    info("OLD FILE SMALLER")
+
+        else:
+            revert_temp_file(img, temp_name, file)
+
+    except Exception as e:
+        revert_temp_file(img, temp_name, file)
+        exception(e)
+        error("IMAGE FAILED" + get_full_path(*file))
+
+    return 0, 0
+
 
 def convert(path):
+    if path in read_file_data('.', 'paths.log').split(','):
+        info('Path already optimised')
+        return
+
     total_old_size = 0
     total_new_size = 0
-    file_counter = 0
+
     tries_counter = 0
-    types = [".jpg", ".jpeg", ".png"]
+    types = [".jpg", ".png", ".jpeg"]
 
-    make_directory('temp_img')
+    d_files = depth_search_files(path, types)
+    write_file_data('.', 'paths.log', path + ',', mode='a')
 
-    for file in depth_search_files(path, types):
+    for file in d_files:
+        old_file_size, new_file_size = optimise_image(file)
+        total_old_size += old_file_size
+        total_new_size += new_file_size
 
-        clear_temp_dir()
-
-        img = Image.open(get_full_path(file[0], file[1]))
-        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-            error("TRANSPARENT IMAGE")
-        else:
-
-            old_file_size = get_file_size(*file)
-            info(file)
-
-            new_file = get_new_picture(img, get_full_path(*file))
-
-            if old_file_size > get_file_size(*new_file):
-                file_counter += 1
-                # tries_counter += counter
-                total_new_size += get_file_size(*new_file)
-                total_old_size += old_file_size
-
-                make_directory(file[0] + '/TRASH')
-                move_file(file[0], file[0] + '/TRASH', file[1])  # delete old file
-
-                rename(get_full_path(new_file[0], new_file[1]),
-                       remove_file_type(get_full_path(*file)) + get_file_type(new_file[1]))  # rename and move new file
-
-                info(str(total_new_size) + " / " + str(total_old_size))
-                info("File count " + str(file_counter))
-                info("Average Minimum count: " + str(int(tries_counter / file_counter)))
-            else:
-                error("OLD FILE SMALLER")
-
-            info(file[0] + " " + file[1])
-
-    # info(str(total_new_size) + "/" + str(total_old_size) + " " + str(file_counter))
-    info("SAVED " + format_bit(total_old_size - total_new_size))
+    info("FILES: " + str(len(d_files)))
+    info("SAVED: " + format_bit(total_old_size - total_new_size))
 
 
-def get_new_picture(img, file_path):
-    counter, quality, img_type = get_new_picture_jpg(img, file_path)
+def revert_temp_file(img, temp_name, file):
+    sleep_count = 0
+    while exists(temp_name):
+        sleep(sleep_count)
+        sleep_count += 1
+        if img:
+            try:
+                img.close()
+            except AttributeError as e:
+                pass
+        try:
+            move(temp_name, get_full_path(*file))
+        except Exception:
+            pass
+
+
+def get_new_picture(img, file_path, temp_path):
+    counter, quality, img_type = get_new_picture_jpg(img, file_path, temp_path)
     info('COUNT: ' + str(counter) + ' JPG QUALITY: ' + str(quality))
 
-    return "temp_img", str(quality) + ".jpg"
+    return temp_path, str(quality) + ".jpg"
 
 
-def get_new_picture_jpg(img, file_name, max_perception=100):
+def get_max_perception(size):
+    # 741104
+    # 324900
+    write_file_data('.', 'quality.log', str(size) + '\n', mode='a')
+
+    return -0.997 + (size - 741104) / 300000000  # min(-0.950, )  # -0.997 *
+
+
+def get_new_picture_jpg(img, file_name, temp_path):
+    max_perception = get_max_perception(img.size[0] * img.size[1])
+
+    info('MAX PERCEPTION: ' + str(max_perception))
 
     quality, counter = find_minimum(x_1=100, x_2=70, min_domain=40, max_domain=100,
-                                    function=lambda x: get_perception(quality=x, img=img, file_name=file_name),
+                                    function=lambda x: get_perception(quality=x, img=img,
+                                                                      file_name=file_name, temp_path=temp_path),
                                     offset=max_perception)
 
     return counter, quality, "jpg"
 
 
-def get_new_picture_png(img, file_name, max_perception=1.1):
+def get_new_picture_png(img, file_name, max_perception):
     # PNG
-    with NamedTemporaryFile(mode="wb", suffix=".png") as temp_file:
-        img.save(temp_file, 'png', optimized=True)
-        png_size = getsize(temp_file)
+    # with NamedTemporaryFile(mode="wb", suffix=".png") as temp_file:
+    img.save(temp_file, 'png', optimized=True)
 
     if get_value(file_name, temp_file) <= max_perception:
         return 0, 0, png_size, "png"
@@ -104,6 +169,6 @@ def get_new_picture_png(img, file_name, max_perception=1.1):
 
 
 if __name__ == "__main__":
-    log = Logger(50)
-    convert("test_images")
+    log = Logger(10)
+    convert("")
     log.shutdown()
