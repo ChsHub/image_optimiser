@@ -7,8 +7,8 @@ from tempfile import TemporaryDirectory
 from time import sleep
 
 from PIL import Image
-from opti import find_minimum
-from perception_ssim import get_perception, get_value
+from image_optimiser.opti import find_minimum
+from image_optimiser.perception_ssim import get_perception, get_value
 from utility.logger import Logger
 from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, exists, \
     write_file_data, read_file_data
