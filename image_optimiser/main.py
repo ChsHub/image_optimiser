@@ -2,9 +2,8 @@
 #  python.exe -m pip install scikit-image
 #  sudo chmod -R a+rX /usr/local/lib/python3.4/
 from logging import info, error, exception
-from shutil import move
+from shutil import move, copyfile
 from tempfile import TemporaryDirectory
-from time import sleep
 
 from PIL import Image
 from image_optimiser.opti import find_minimum
@@ -27,7 +26,7 @@ def is_compressable(img, file, types, trash_path):
         for x in range(alpha.width):
             for y in range(alpha.height):
                 color_sum += pixel_data[x, y]
-
+        # if large parts are transparent don't convert to RGB
         return color_sum / (255 * alpha.width * alpha.height) > 0.99
 
     elif file[0].endswith('TRASH'):
@@ -35,6 +34,7 @@ def is_compressable(img, file, types, trash_path):
         return False
 
     elif exists(trash_path):
+        # if image in TRASH, then don't compress again
         file_name = remove_file_type(file[1])
         for extension in types:
             if exists(get_full_path(trash_path, file_name + extension)):
@@ -44,27 +44,25 @@ def is_compressable(img, file, types, trash_path):
 
 
 def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
+
     info(get_full_path(*file))
+    with TemporaryDirectory() as temp_path:
 
-    make_directory('ascii')
-    temp_name = 'ascii/a' + get_file_type(file[1])
-    move(get_full_path(*file), temp_name)
-    write_file_data('log_files', 'a_image.log', data=get_full_path(*file))
-    trash_path = get_full_path(file[0], 'TRASH')
+        temp_name = get_full_path(temp_path, 'a' + get_file_type(file[1]))
+        copyfile(get_full_path(*file), temp_name)
 
-    try:
-        img = Image.open(temp_name)
+        trash_path = get_full_path(file[0], 'TRASH')
 
-        if is_compressable(img, file, types, trash_path):
+        try:
+            img = Image.open(temp_name)
 
-            img = img.convert("RGB")
-            old_file_size = get_file_size(temp_name)
-            info(str(file))
+            if is_compressable(img, file, types, trash_path):
 
-            with TemporaryDirectory() as temp_path:
+                img = img.convert("RGB")
+                old_file_size = get_file_size(temp_name)
+
                 new_file = get_new_picture(img, temp_name, temp_path)
                 new_file_size = get_file_size(*new_file)
-                revert_temp_file(img, temp_name, file)
 
                 if old_file_size > new_file_size:
 
@@ -72,20 +70,18 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
                     move_file(file[0], trash_path, file[1])  # delete old file
                     # rename and move new file
                     move(get_full_path(new_file[0], new_file[1]),
-                         remove_file_type(get_full_path(file[0], file[1])) + get_file_type(new_file[1]))
+                         get_full_path(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
 
                     return old_file_size, new_file_size
 
                 else:
                     info("OLD FILE SMALLER")
 
-        else:
-            revert_temp_file(img, temp_name, file)
+            # no else
 
-    except Exception as e:
-        revert_temp_file(img, temp_name, file)
-        exception(e)
-        error("IMAGE FAILED" + get_full_path(*file))
+        except Exception as e:
+            exception(e)
+            error("IMAGE FAILED")
 
     return 0, 0
 
@@ -111,22 +107,6 @@ def convert(path):
 
     info("FILES: " + str(len(d_files)))
     info("SAVED: " + format_bit(total_old_size - total_new_size))
-
-
-def revert_temp_file(img, temp_name, file):
-    sleep_count = 0
-    while exists(temp_name):
-        sleep(sleep_count)
-        sleep_count += 1
-        if img:
-            try:
-                img.close()
-            except AttributeError as e:
-                pass
-        try:
-            move(temp_name, get_full_path(*file))
-        except Exception:
-            pass
 
 
 def get_new_picture(img, file_path, temp_path):
