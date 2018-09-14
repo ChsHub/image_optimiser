@@ -27,21 +27,18 @@ def get_data():
     points = defaultdict(list)
     with open('./quality.log', mode='r') as file:
         x = 0
-        for line in file:
-            print(line[2:4:1])
-            if '\t' in line[2:3:1]:
-                y, z = line.split('\t')
-                y, z = int(y), z.split('.')[1][0:10]
-                if len(z) != 10:
-                    raise ValueError
-                z = int(z)
-                if z < 0:
-                    print(x, z, y)
+        try:
+            for i, line in enumerate(file):
+                print(line[2:4:1])
+                if '\t' in line[2:3:1]:
+                    y, z = line.split('\t')
+                    y, z = int(y), int(float(z)*-1000000000)
 
-                points[x].append((y ,z))
-            else:
-                x = int(line)
-
+                    points[x].append((y ,z))
+                else:
+                    x = int(line)
+        except Exception as e:
+            print(z)
 
         return zip(*[(x, y ,z/x) for y, z in points[x] for x in sorted(points)[2::10]])
 

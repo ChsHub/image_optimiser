@@ -1,18 +1,19 @@
 # python3
 #  python.exe -m pip install scikit-image
 #  sudo chmod -R a+rX /usr/local/lib/python3.4/
+from concurrent.futures import ThreadPoolExecutor
 from logging import info, error, exception
 from shutil import move, copyfile
 from tempfile import TemporaryDirectory
-
+from image_optimiser.perception_ssim import cv_open_image
 from PIL import Image
 from image_optimiser.opti import find_minimum
 from image_optimiser.perception_ssim import get_perception, get_value
 from utility.logger import Logger
 from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, exists, \
-    write_file_data, read_file_data
+    write_file_data, read_file_data, delete_file
 from utility.path_str import get_full_path
-from utility.utilities import format_bit
+from utility.utilities import format_bit, is_file_type
 from utility.utilities import remove_file_type, get_file_type
 
 
@@ -43,9 +44,11 @@ def is_compressable(img, file, types, trash_path):
     return True
 
 
-def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
+def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
+    if not is_file_type(file[1], types):
+        return 0, 0
+    info('OPT FILE: ' + get_full_path(*file))
 
-    info(get_full_path(*file))
     with TemporaryDirectory() as temp_path:
 
         temp_name = get_full_path(temp_path, 'a' + get_file_type(file[1]))
@@ -54,30 +57,35 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
         trash_path = get_full_path(file[0], 'TRASH')
 
         try:
-            img = Image.open(temp_name)
+            with Image.open(temp_name) as img:
 
-            if is_compressable(img, file, types, trash_path):
+                if is_compressable(img, file, types, trash_path):
 
-                img = img.convert("RGB")
-                old_file_size = get_file_size(temp_name)
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    old_file_size = get_file_size(temp_name)
 
-                new_file = get_new_picture(img, temp_name, temp_path)
-                new_file_size = get_file_size(*new_file)
+                    new_file = get_new_picture(img, temp_name, temp_path)
+                    new_file_size = get_file_size(*new_file)
 
-                if old_file_size > new_file_size:
+                    if old_file_size > new_file_size:
 
-                    make_directory(trash_path)
-                    move_file(file[0], trash_path, file[1])  # delete old file
-                    # rename and move new file
-                    move(get_full_path(new_file[0], new_file[1]),
-                         get_full_path(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
+                        if insta_delete:
+                            delete_file(*file)
+                        else:
+                            make_directory(trash_path)
+                            move_file(file[0], trash_path, file[1])  # delete old file
 
-                    return old_file_size, new_file_size
+                        # rename and move new file
+                        move(get_full_path(new_file[0], new_file[1]),
+                             get_full_path(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
 
-                else:
-                    info("OLD FILE SMALLER")
+                        return old_file_size, new_file_size
 
-            # no else
+                    else:
+                        info("OLD FILE SMALLER")
+
+                # no else
 
         except Exception as e:
             exception(e)
@@ -86,57 +94,50 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg")):
     return 0, 0
 
 
-def convert(path):
-    if path in read_file_data('.', 'paths.log').split(','):
+def convert(path, insta_delete=False):
+    if path in read_file_data('D:\Making\Python\image_optimiser\image_optimiser', 'paths.log').split(','):
         info('Path already optimised')
-        return
+     #   return
 
-    total_old_size = 0
-    total_new_size = 0
-
-    tries_counter = 0
     types = [".jpg", ".png", ".jpeg"]
 
     d_files = depth_search_files(path, types)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        result = executor.map(lambda file: optimise_image(file, insta_delete=insta_delete), d_files)
+
+    total_old_size, total_new_size = zip(*result)
+    total_old_size, total_new_size = sum(total_old_size), sum(total_new_size)
+
     write_file_data('.', 'paths.log', path + ',', mode='a')
-
-    for file in d_files:
-        old_file_size, new_file_size = optimise_image(file)
-        total_old_size += old_file_size
-        total_new_size += new_file_size
-
     info("FILES: " + str(len(d_files)))
     info("SAVED: " + format_bit(total_old_size - total_new_size))
 
 
-def get_new_picture(img, file_path, temp_path):
-    counter, quality, img_type = get_new_picture_jpg(img, file_path, temp_path)
-    info('COUNT: ' + str(counter) + ' JPG QUALITY: ' + str(quality))
+# returns new file: (path, name)
+def get_new_picture(img, file_name, temp_path):
 
-    return temp_path, str(quality) + ".jpg"
+    img_resolution = img.size[0] * img.size[1]
+    max_perception = get_max_perception(img_resolution)
+    original_cv = cv_open_image(file_name)
+    info('MAX PERCEPTION: ' + str(max_perception))
+
+    new_file = find_minimum(img_resolution=img_resolution, low=40, high=100,
+                                    function=lambda x: get_perception(quality=x, img=img,
+                                                                      original=original_cv, temp_path=temp_path),
+                                    target_value=max_perception)
+
+    return temp_path, new_file.split('/')[-1]
 
 
 def get_max_perception(size):
     # 741104
     # 324900
-    write_file_data('.', 'quality.log', str(size) + '\n', mode='a')
-
-    return -0.997 + (size - 741104) / 300000000  # min(-0.950, )  # -0.997 *
+    return -0.997 + ((size - 741104) / 300000000)  # min(-0.950, )  # -0.997 *
 
 
-def get_new_picture_jpg(img, file_name, temp_path):
-    max_perception = get_max_perception(img.size[0] * img.size[1])
 
-    info('MAX PERCEPTION: ' + str(max_perception))
-
-    quality, counter = find_minimum(x_1=100, x_2=70, min_domain=40, max_domain=100,
-                                    function=lambda x: get_perception(quality=x, img=img,
-                                                                      file_name=file_name, temp_path=temp_path),
-                                    offset=max_perception)
-
-    return counter, quality, "jpg"
-
-
+'''
 def get_new_picture_png(img, file_name, max_perception):
     # PNG
     # with NamedTemporaryFile(mode="wb", suffix=".png") as temp_file:
@@ -145,10 +146,10 @@ def get_new_picture_png(img, file_name, max_perception):
     if get_value(file_name, temp_file) <= max_perception:
         return 0, 0, png_size, "png"
     else:
-        return None
+        return None'''
 
 
 if __name__ == "__main__":
-    log = Logger(10)
-    convert("")
-    log.shutdown()
+    with Logger(10):
+        convert(input())
+
