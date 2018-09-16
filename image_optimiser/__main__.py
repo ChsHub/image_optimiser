@@ -5,16 +5,16 @@ from concurrent.futures import ThreadPoolExecutor
 from logging import info, error, exception
 from shutil import move, copyfile
 from tempfile import TemporaryDirectory
-from image_optimiser.perception_ssim import cv_open_image
+
 from PIL import Image
-from image_optimiser.opti import find_minimum
-from image_optimiser.perception_ssim import get_perception, get_value
 from utility.logger import Logger
 from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, exists, \
-    write_file_data, read_file_data, delete_file
+    delete_file
 from utility.path_str import get_full_path
-from utility.utilities import format_bit, is_file_type
-from utility.utilities import remove_file_type, get_file_type
+from utility.utilities import format_bit, is_file_type, remove_file_type, get_file_type
+
+from image_optimiser.opti import find_minimum
+from image_optimiser.perception_ssim import cv_open_image, get_perception
 
 
 def is_compressable(img, file, types, trash_path):
@@ -95,12 +95,8 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
 
 
 def convert(path, insta_delete=False):
-    if path in read_file_data('D:\Making\Python\image_optimiser\image_optimiser', 'paths.log').split(','):
-        info('Path already optimised')
-     #   return
 
     types = [".jpg", ".png", ".jpeg"]
-
     d_files = depth_search_files(path, types)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
@@ -109,7 +105,6 @@ def convert(path, insta_delete=False):
     total_old_size, total_new_size = zip(*result)
     total_old_size, total_new_size = sum(total_old_size), sum(total_new_size)
 
-    write_file_data('.', 'paths.log', path + ',', mode='a')
     info("FILES: " + str(len(d_files)))
     info("SAVED: " + format_bit(total_old_size - total_new_size))
 
@@ -135,21 +130,18 @@ def get_max_perception(size):
     # 324900
     return -0.997 + ((size - 741104) / 300000000)  # min(-0.950, )  # -0.997 *
 
-
-
-'''
-def get_new_picture_png(img, file_name, max_perception):
-    # PNG
-    # with NamedTemporaryFile(mode="wb", suffix=".png") as temp_file:
-    img.save(temp_file, 'png', optimized=True)
-
-    if get_value(file_name, temp_file) <= max_perception:
-        return 0, 0, png_size, "png"
-    else:
-        return None'''
-
-
 if __name__ == "__main__":
-    with Logger(10):
-        convert(input())
+    s_in = 's'
+    while s_in:
+        with Logger(10):
+            try:
+                s_in = input('OPTIMISE PATH: ')
+                if s_in[-1] == '"' or s_in[-1] == "'":
+                    s_in = s_in[:-1]
 
+                if s_in[0] == '"' or s_in[0] == "'":
+                    s_in = s_in[1:]
+
+                convert(s_in)
+            except Exception as e:
+                exception(e)

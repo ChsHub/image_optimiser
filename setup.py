@@ -7,6 +7,6 @@ setup(
     author='Christian',
     author_email='christian1193@web.com',
     packages=['image_optimiser'],
-    install_requires=['scikit-image', 'opencv-python']
+    install_requires=['scikit-image', 'opencv-python', 'numpy', 'Cython', 'utility', 'pillow']
+    # http://scikit-image.org/docs/dev/install.html
 )
-# C:\Python36-32\python.exe -m pip install -e .
