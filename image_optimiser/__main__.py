@@ -13,7 +13,7 @@ from utility.path_str import get_full_path
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
 from image_optimiser.opti import find_minimum
-
+from sys import exit as sys_exit
 
 def accept_file(file, types, trash_path):
     if file[0].endswith('TRASH'):
@@ -127,11 +127,17 @@ def convert(path, insta_delete=False):
         info("SAVED: " + format_byte(total_old_size - total_new_size))
 
 
-if __name__ == "__main__":
-    with Logger(10):
-        try:
-            s_input = input('OPTIMISE PATH: ')
-            if len(s_input) > 2:
-                convert(s_input)
-        except Exception as e:
-            exception(e)
+def init():
+    if __name__ == "__main__":
+        with Logger(10):
+            try:
+                s_input = input('OPTIMISE PATH: ')
+                if len(s_input) > 2:
+                    convert(s_input)
+
+            except Exception as e:
+                exception(e)
+        sys_exit()
+
+
+init()

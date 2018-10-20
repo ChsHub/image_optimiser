@@ -7,12 +7,11 @@ def _get_pixel_array(window_size, position, pixels):
             range(position[1], position[1] + window_size)]
 
 
+# https://en.wikipedia.org/wiki/Expected_value
 def get_E(pixels):
     """
-    :param window_size:
-    :param position:
     :param pixels:
-    :return: Erwartungswert, P
+    :return: expected value, P
     """
     P = defaultdict(int)
     for v in pixels:
@@ -61,12 +60,6 @@ def SSIM(image_0, image_1):
         print('ERROR images are not same size')
         return
     # no else
-    """if type(image_0) != Image.Image:
-        print('ERROR image_0 type')
-        return
-    if type(image_1) != Image.Image:
-        print('ERROR image_1 type')
-        return"""
 
     window_size = 8
     ssim, i = 0, 0

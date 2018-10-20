@@ -7,9 +7,9 @@ def run_test(file):
     return Popen(command)
 
 
-files = filter(lambda x: x.startswith('test___'), get_dir_list('.'))
+files = filter(lambda x: x.startswith('test_'), get_dir_list('.'))
 files = list(map(run_test, files))
-files = map(lambda x: x.communicate(), files)
+files = list(map(lambda x: x.communicate(), files))
 
 Popen('coverage combine').communicate()
 Popen('coverage report -m').communicate()

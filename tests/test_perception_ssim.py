@@ -19,9 +19,6 @@ def test_cv_open_image_fail():
             cv_image = cv_open_image(image.file_name)
         except ValueError:
             assert True
-            return
-
-    assert False
 
 
 def test_cv_open_image_fail2():
@@ -29,9 +26,6 @@ def test_cv_open_image_fail2():
         cv_image = cv_open_image('')
     except ValueError:
         assert True
-        return
-
-    assert False
 
 
 @given(integers(min_value=0, max_value=100))

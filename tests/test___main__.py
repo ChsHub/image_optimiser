@@ -5,6 +5,7 @@ from hypothesis.strategies import text, integers, booleans, SearchStrategy
 from image_optimiser.__main__ import *
 from mock_image import MockImage
 from utility.os_interface import make_directory
+from unittest.mock import patch
 
 
 def test_accept_file():
@@ -107,6 +108,22 @@ def test_get_new_picture():
         path, name = get_new_picture(mock.temp_path, mock.full_path, mock.image)
         assert exists(get_full_path(path, name))
 
+
+# https://medium.com/@george.shuklin/how-to-test-if-name-main-1928367290cb
+@given(text())
+def test_init(user_input):
+    if not exists(user_input):
+        with patch('builtins.input', side_effect=[user_input]):
+            import image_optimiser.__main__ as main
+            a = main
+            a.__name__ = '__main__'
+            try:
+                main.init()
+            except SystemExit as e:
+                # Assert proper exit
+                assert True
+
+
 if __name__ == '__main__':
     test_accept_file()
     test_accept_file_exists()
@@ -123,4 +140,4 @@ if __name__ == '__main__':
 
     test_get_new_picture()
 
-
+    test_init()
