@@ -14,7 +14,7 @@ def get_max_perception(size):
 
 # binary search
 def find_minimum(temp_path, original_file, img):
-    low, high = 40, 100
+    low, high = 30, 100
 
     img_resolution = img.size[0] * img.size[1]
     original_cv = cv_open_image(original_file)
@@ -39,6 +39,6 @@ def find_minimum(temp_path, original_file, img):
             low, high = low, quality - 1
 
     with Timer('WRITE LOG'):
-        write_file_data('.', 'qualityX+' + get_file_type(temp_file) + '.log', log_data + '\n', mode='a')
+        write_file_data('.', 'quality+' + get_file_type(temp_file) + '.log', log_data + '\n', mode='a')
 
     return temp_file

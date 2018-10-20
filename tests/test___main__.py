@@ -3,7 +3,6 @@ from shutil import copy2, move
 from hypothesis import given
 from hypothesis.strategies import text, integers, booleans, SearchStrategy
 from image_optimiser.__main__ import *
-from image_optimiser.__main__ import _clean_input
 from mock_image import MockImage
 from utility.os_interface import make_directory
 
@@ -108,16 +107,6 @@ def test_get_new_picture():
         path, name = get_new_picture(mock.temp_path, mock.full_path, mock.image)
         assert exists(get_full_path(path, name))
 
-
-@given(text(min_size=4))
-def test__clean_input(s_in):
-    result = _clean_input(s_in)
-    for s in ['"', "'"]:
-        assert result[0] != s
-        assert result[-1] != s
-
-
-
 if __name__ == '__main__':
     test_accept_file()
     test_accept_file_exists()
@@ -133,6 +122,5 @@ if __name__ == '__main__':
     test_convert_path()
 
     test_get_new_picture()
-    test__clean_input()
-    # test__clean_input_examples()
+
 

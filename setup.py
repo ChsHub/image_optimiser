@@ -7,7 +7,9 @@ setup(
     author='Christian',
     author_email='christian1193@web.com',
     packages=['image_optimiser'],
-    install_requires=['scikit-image', 'opencv-python', 'numpy', 'Cython', 'utility', 'pillow']
+    license='MIT License',
+    classifiers=['Programming Language :: Python :: 3.6'],
+    install_requires=['scikit-image', 'opencv-python', 'numpy', 'Cython', 'pillow', 'utility']
     # http://scikit-image.org/docs/dev/install.html
     # python.exe -m pip install scikit-image
 )
