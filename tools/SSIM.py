@@ -7,30 +7,35 @@ def _get_pixel_array(window_size, position, pixels):
             range(position[1], position[1] + window_size)]
 
 
+def _get_pixel_probabilities(pixels):
+    color_count = defaultdict(int)
+    for pixel in pixels:
+        color_count[pixel] += 1
+
+    color_sum = sum(pixels)
+    return [color_count[pixel] / color_sum for pixel in pixels]
+
 # https://en.wikipedia.org/wiki/Expected_value
-def get_E(pixels):
+def get_expected_value(pixels):
     """
     :param pixels:
-    :return: expected value, P
+    :return: expected value, probabilities of each pixel value
     """
-    P = defaultdict(int)
-    for v in pixels:
-        P[v] += 1
 
-    P_sum = sum(pixels)
-    P = [P[v] / P_sum for v in pixels]
-    return sum([v * p for v, p in zip(pixels, P)]), P  # SIGMA x * p
+    pixel_probabilities = _get_pixel_probabilities(pixels)
+    # SIGMA x * p
+    return sum([v * p for v, p in zip(pixels, pixel_probabilities)]), pixel_probabilities
 
 
 def variance(pixels):
-    E, P = get_E(pixels)
+    expected_value, pixel_probabilities = get_expected_value(pixels)
 
-    return sum([p * (v - E) ** 2 for v, p in zip(pixels, P)]), E
+    return sum([p * (v - expected_value) ** 2 for v, p in zip(pixels, pixel_probabilities)]), expected_value
 
 
 def covariance(pixels, E_x, E_y):
-    E, p = get_E(pixels)
-    return E - E_x * E_y
+    expected_value = get_expected_value(pixels)[0]
+    return expected_value - E_x * E_y
 
 
 def average(pixels, pixel_len):
