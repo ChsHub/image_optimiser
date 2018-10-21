@@ -24,8 +24,8 @@ def test_SSIM():
                 with Timer('HOME MADE OLD'):
                     value3 = SSIM_old(img_x, Image.open(temp_file))
 
-                assert abs(value3 - value2) < 0.0005
                 info(str(value) + '  ///  ' + str(value2) + '  ///  ' + str(value3))
+                assert abs(value3 - value2) < 0.0005
                 #assert abs(value - value2) < 0.2
 
 

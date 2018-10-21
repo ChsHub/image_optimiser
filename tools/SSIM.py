@@ -1,37 +1,29 @@
 from collections import defaultdict
-
+from ctypes import c_ubyte
 
 def get_expected_value(color_count, pixel_sum):
     return sum(pixel * count * count
-        for pixel, count in
-        zip(color_count.keys(), color_count.values())) / pixel_sum
+               for pixel, count in zip(color_count.keys(), color_count.values())) / pixel_sum
 
 
 def covariance(tile_x, tile_y):
-
     for pixel, count in zip(tile_y.color_count.keys(), tile_y.color_count.values()):
         tile_x.color_count[pixel] += count
 
-    return get_expected_value(tile_x.color_count, tile_x.pixel_sum + tile_y.pixel_sum) - tile_x.expected_value * tile_y.expected_value
+    return get_expected_value(tile_x.color_count,
+                              tile_x.pixel_sum + tile_y.pixel_sum) - tile_x.expected_value * tile_y.expected_value
 
 
 class Tile:
-    def __init__(self, window_size, position, image, pixel_len, width):
-        self._pixels = []
-
-        # self.pixel_sum = 0
-        for y in range(position[1], position[1] + window_size):
-            y *= width
-            self._pixels += image[position[0] + y:position[0] + window_size + y]
-
+    def __init__(self, pixels, pixel_len):
         self.color_count = defaultdict(int)
-        for pixel in self._pixels:
-            self.color_count[pixel] += 1
-            # self.pixel_sum += pixel
 
-        self.pixel_sum = sum(self._pixels)
+        for pixel in pixels:
+            self.color_count[pixel] += 1
+
+        self.pixel_sum = sum(pixels)
+
         self.average = self.pixel_sum / pixel_len
-        # color_count_zip = zip(self.color_count.keys(), self.color_count.values())
         self.expected_value = get_expected_value(self.color_count, self.pixel_sum)
 
         self.variance = sum((count * (pixel - self.expected_value)) ** 2
@@ -39,11 +31,11 @@ class Tile:
                             zip(self.color_count.keys(), self.color_count.values())) / self.pixel_sum
 
 
-def _ssim_tile(img_x, img_y, dynamic_range, pixel_len, width, window_size, position):
+def _ssim_tile(pixels_x, pixels_y, dynamic_range, pixel_len):
     # https: // en.wikipedia.org / wiki / Structural_similarity  # Algorithm
 
-    tile_x = Tile(window_size, position, img_x, pixel_len, width)
-    tile_y = Tile(window_size, position, img_y, pixel_len, width)
+    tile_x = Tile(pixels_x, pixel_len)
+    tile_y = Tile(pixels_y, pixel_len)
 
     cov = covariance(tile_x, tile_y)
 
@@ -66,12 +58,21 @@ def SSIM(image_0, image_1):
     dynamic_range = 255  # *3
     pixel_len = window_size * window_size
     width, height = image_0.size
-    image_0 = list(image_0.split()[0].getdata())
-    image_1 = list(image_1.split()[0].getdata())
+    image_0 = list(image_0.getdata(band=0))
+    image_1 = list(image_1.getdata(band=0))
 
-    for x in range(0, width - window_size, window_size):
-        for y in range(0, height - window_size, window_size):
-            ssim += _ssim_tile(image_0, image_1, dynamic_range, pixel_len, width, window_size, position=(x, y))
+    for x in range(0, width - width % window_size, window_size):
+        for y in range(0, height - height % window_size, window_size):
+
+            _pixels_0 = []
+            _pixels_1 = []
+            for w in range(y, y + window_size):
+                w *= width
+
+                _pixels_0 += image_0[x + w:x + window_size + w]
+                _pixels_1 += image_1[x + w:x + window_size + w]
+
+            ssim += _ssim_tile(_pixels_0, _pixels_1, dynamic_range, pixel_len)
             i += 1
 
     return ssim / i
