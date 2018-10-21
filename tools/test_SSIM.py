@@ -19,13 +19,13 @@ def test_SSIM():
                     temp_file, value = get_perception(1, img_x, cv_open_image(temp_name), temp_path)
 
                 with Timer('HOME MADE NEW'):
-                    value2 = SSIM(img_x, Image.open(temp_file))
+                    value2 = -SSIM(img_x, Image.open(temp_file))
 
-                with Timer('HOME MADE OLD'):
-                    value3 = SSIM_old(img_x, Image.open(temp_file))
+                #with Timer('HOME MADE OLD'):
+                 #   value3 = SSIM_old(img_x, Image.open(temp_file))
 
-                info(str(value) + '  ///  ' + str(value2) + '  ///  ' + str(value3))
-                assert abs(value3 - value2) < 0.0005
+                info(str(value) + '  ///  ' + str(value2))
+                assert abs(value - value2) < 0.05
                 #assert abs(value - value2) < 0.2
 
 
