@@ -15,6 +15,7 @@ from utility.utilities import format_byte, is_file_type, remove_file_type, get_f
 from image_optimiser.opti import find_minimum
 from sys import exit as sys_exit
 
+
 def accept_file(file, types, trash_path):
     if file[0].endswith('TRASH'):
         info('already compressed')

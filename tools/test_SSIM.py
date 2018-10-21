@@ -11,7 +11,7 @@ from image_optimiser.perception_ssim import get_perception, cv_open_image
 
 
 def test_SSIM():
-    with Logger(_max_count_logfiles=100):
+    with Logger(_max_count_logfiles=10):
         temp_name = "D:\Making\Python\image_optimiser/tests/test.png"
         with TemporaryDirectory() as temp_path:
             with Image.open(temp_name) as img_x:
@@ -24,8 +24,8 @@ def test_SSIM():
                 with Timer('HOME MADE OLD'):
                     value3 = SSIM_old(img_x, Image.open(temp_file))
 
-                assert abs(value3 - value2) < 0.05
-                info(str(value) + '  ///  ' + str(value2)+ '  ///  ' + str(value3))
+                assert abs(value3 - value2) < 0.0005
+                info(str(value) + '  ///  ' + str(value2) + '  ///  ' + str(value3))
                 #assert abs(value - value2) < 0.2
 
 
