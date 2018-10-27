@@ -1,53 +1,79 @@
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from ctypes import c_ubyte
-
-def naive_covariance(pixel0, pixel1, image0, image1, pixel_len):
-    total_sum = 0
-    for i1, i2 in zip(pixel0, pixel1):
-        total_sum += i1 * i2
-
-    return (total_sum - image0.pixel_sum * image1.pixel_sum / pixel_len) / pixel_len
+from logging import info
+from multiprocessing import Pool
+from utility.timer import Timer
 
 
-def covariance(pixels_0, pixel_1, image0, image1, pixel_len):
-    cov = 0
-    for pixel_0, pixel_1 in zip(pixels_0, pixel_1):
-        cov += (pixel_0 - image0.average) * (pixel_1 - image1.average)
-    return cov / pixel_len
-
-    # return (image0.average + image1.average) / 2 - image0.average * image1.average
-
-
-class Tile:
-    def __init__(self, pixels, pixel_len):
-        color_count = defaultdict(int)
-        for pixel in pixels:
-            color_count[pixel] += 1
-
-        self.pixel_sum = sum(pixels)
-        # self.pixel_sum = get_expected_value(color_count)
-        self.average = self.pixel_sum / pixel_len
-
-        # https://en.wikipedia.org/wiki/Standard_deviation#Population_standard_deviation_of_grades_of_eight_students
-        self.variance = 0
-        for pixel, count in zip(color_count.keys(), color_count.values()):
-            a = pixel - self.average
-            self.variance += count * a * a
-        self.variance /= pixel_len
+def variance(color_count, average, pixel_len):
+    # https://en.wikipedia.org/wiki/Standard_deviation#Population_standard_deviation_of_grades_of_eight_students
+    variance = 0
+    for pixel, count in zip(color_count.keys(), color_count.values()):
+        a = pixel - average
+        variance += count * a * a
+    return variance / pixel_len
 
 
-def _ssim_tile(pixel0, pixel1, dynamic_range, pixel_len):
+def _ssim_tile(pixel0, pixel1, pixel_len, c_1, c_2):
     # https: // en.wikipedia.org / wiki / Structural_similarity  # Algorithm
 
-    image0 = Tile(pixel0, pixel_len)
-    image1 = Tile(pixel1, pixel_len)
-    cov = naive_covariance(pixel0, pixel1, image0, image1, pixel_len)
-    c_1 = (dynamic_range * 0.01) ** 2
-    c_2 = (dynamic_range * 0.03) ** 2
+    color_count_0 = defaultdict(int)
+    color_count_1 = defaultdict(int)
 
-    return (2 * image0.average * image1.average + c_1) * (2 * cov + c_2) \
-           / (image0.average * image0.average + image1.average * image1.average + c_1) \
-           / (image0.variance + image1.variance + c_2)
+    pixel_sum_0 = sum(pixel0)
+    pixel_sum_1 = sum(pixel1)
+    # pixel_sum_0 = 0
+    # pixel_sum_1 = 0
+
+    covariance = 0
+    for i1, i2 in zip(pixel0, pixel1):
+        # i1 = sum(i1)
+        # i2 = sum(i2)
+        # pixel_sum_0 += i1
+        # pixel_sum_1 += i2
+
+        color_count_0[i1] += 1
+        color_count_1[i2] += 1
+        covariance += i1 * i2
+
+    average_0 = pixel_sum_0 / pixel_len
+    average_1 = pixel_sum_1 / pixel_len
+
+    covariance = (covariance - pixel_sum_0 * pixel_sum_1 / pixel_len) / pixel_len
+    variance_0 = variance(color_count_0, average_0, pixel_len)
+    variance_1 = variance(color_count_1, average_1, pixel_len)
+
+    return (2 * average_0 * average_1 + c_1) * (2 * covariance + c_2) \
+           / (average_0 * average_0 + average_1 * average_1 + c_1) \
+           / (variance_0 + variance_1 + c_2)
+
+
+class Runner:
+    def __init__(self, width, window_size, image_0, image_1, pixel_len, c_1, c_2):
+        self.width = width
+        self.window_size = window_size
+        self.image_0 = image_0
+        self.image_1 = image_1
+        self.pixel_len = pixel_len
+        self.c_1 = c_1
+        self.c_2 = c_2
+
+    def ssim(self, xy):
+        s = 0
+        for x in range(0, self.width - self.width % self.window_size, self.window_size):
+            s += _ssim_tile(*get_pixels(x, xy[1], self.width, self.window_size, self.image_0, self.image_1),
+                            self.pixel_len, self.c_1, self.c_2)
+        return s
+
+
+def get_pixels(x, y, width, window_size, image_0, image_1):
+    pixel0 = []
+    pixel1 = []
+    for w in range(y * width, (y + window_size) * width, width):
+        pixel0 += image_0[x + w:x + window_size + w]
+        pixel1 += image_1[x + w:x + window_size + w]
+    return pixel0, pixel1
 
 
 def SSIM(image_0, image_1):
@@ -55,27 +81,31 @@ def SSIM(image_0, image_1):
         print('ERROR images are not same size')
         return
     # no else
+    with Timer('PREP'):
+        window_size = 8
+        dynamic_range = 255  # *3
+        c_1 = (dynamic_range * 0.01) ** 2
+        c_2 = (dynamic_range * 0.03) ** 2
+        pixel_len = window_size * window_size
+        width, height = image_0.size
+        image_0 = list(image_0.getdata(band=0))  #
+        image_1 = list(image_1.getdata(band=0))  #
+        # image_1 = image_0
+        ssim = 0
+        max_workers = 2
+        divider = 1
 
-    window_size = 8
-    ssim = 0
-    dynamic_range = 255  # *3
-    pixel_len = window_size * window_size
-    width, height = image_0.size
-    image_0 = list(image_0.getdata(band=0))
-    image_1 = list(image_1.getdata(band=0))
-    # image_1 = image_0
+    with Timer('SINGLE'):
+        for x in range(0, width - width % window_size, window_size):
+            for y in range(0, height - height % window_size, window_size * divider):
+                ssim += _ssim_tile(*get_pixels(x, y, width, window_size, image_0, image_1), pixel_len, c_1, c_2)
+        ssim = ssim * divider / (width // window_size * height // window_size)
 
-    for x in range(0, width - width % window_size, window_size):
-        for y in range(0, height - height % window_size, window_size):
+    with Pool() as executor:
+        with Timer('PARALLEL'):
+            ssim = executor.map(Runner(width, window_size, image_0, image_1, pixel_len, c_1, c_2).ssim,
+                                [(0, y) for y in range(0, height - height % window_size, window_size * divider)],
+                                chunksize=height // window_size)
+            ssim = sum(ssim) * divider / (width // window_size * height // window_size)
 
-            _pixels_0 = []
-            _pixels_1 = []
-            for w in range(y, y + window_size):
-                w *= width
-
-                _pixels_0 += image_0[x + w:x + window_size + w]
-                _pixels_1 += image_1[x + w:x + window_size + w]
-
-            ssim += _ssim_tile(_pixels_0, _pixels_1, dynamic_range, pixel_len)
-
-    return ssim / (width // window_size * height // window_size)
+    return ssim
