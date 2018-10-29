@@ -106,7 +106,7 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
                             # no else
             return 0, 0
         except MemoryError as e:
-            error('OUT OF MEMORY')
+            exception('OUT OF MEMORY')
         except Exception as e:
             exception(e)
         error(str(file))
@@ -139,7 +139,6 @@ def convert(path, insta_delete=False, logger=None):
                 with ProcessPoolExecutor(max_workers=workers) as executor:
                     images = executor.map(Optimiser(insta_delete, logger).optimise_image, images)
                 images = list(images)
-                print(images)
                 if images:
                     sizes = list(filter(lambda x: type(x[0]) == int, images))
                     if sizes:

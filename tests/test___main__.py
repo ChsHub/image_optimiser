@@ -67,13 +67,16 @@ def test_is_compressable_trans(name, palette):
 @given(text(min_size=1, alphabet='abcshtwdfw'), integers(min_value=0, max_value=5), booleans(),
        integers(min_value=0, max_value=3))
 def test_optimise_image(file_name, ext, insta_delete, palette):
+
     with MockImage(file_name, 10, extension=ext, palette=palette) as mock:
         old_size, new_size = optimise_image((mock.temp_path, mock.file_name), (".jpg", ".png", ".jpeg"), insta_delete)
 
-        assert exists(mock.temp_path + '/TRASH') != insta_delete
-        assert type(old_size) == type(new_size) == int
         assert old_size >= 0
         assert new_size >= 0
+        assert exists(mock.temp_path + '/TRASH') != insta_delete
+        assert type(old_size) == type(new_size) == int
+
+
         assert exists(mock.full_path) == (old_size == 0)
 
 

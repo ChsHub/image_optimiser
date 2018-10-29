@@ -82,25 +82,28 @@ def SSIM(image_0, image_1):
         return
     # no else
     with Timer('PREP'):
-        window_size = 8
+        window_size = 7
         dynamic_range = 255  # *3
         c_1 = (dynamic_range * 0.01) ** 2
         c_2 = (dynamic_range * 0.03) ** 2
         pixel_len = window_size * window_size
         width, height = image_0.size
-        image_0 = list(image_0.getdata(band=0))  #
-        image_1 = list(image_1.getdata(band=0))  #
         # image_1 = image_0
         ssim = 0
         max_workers = 2
         divider = 1
 
     with Timer('SINGLE'):
-        for x in range(0, width - width % window_size, window_size):
-            for y in range(0, height - height % window_size, window_size * divider):
-                ssim += _ssim_tile(*get_pixels(x, y, width, window_size, image_0, image_1), pixel_len, c_1, c_2)
-        ssim = ssim * divider / (width // window_size * height // window_size)
+        for i, s in enumerate(image_0.mode):
+            band_0 = list(image_0.getdata(band=i))  #
+            band_1 = list(image_1.getdata(band=i))  #
+            for x in range(0, width - width % window_size, window_size):
+                for y in range(0, height - height % window_size, window_size * divider):
+                    ssim += _ssim_tile(*get_pixels(x, y, width, window_size, band_0, band_1), pixel_len, c_1, c_2)
+        ssim = ssim * divider / (width // window_size * height // window_size) / 3
+    return ssim
 
+    """
     with Pool() as executor:
         with Timer('PARALLEL'):
             ssim = executor.map(Runner(width, window_size, image_0, image_1, pixel_len, c_1, c_2).ssim,
@@ -108,4 +111,4 @@ def SSIM(image_0, image_1):
                                 chunksize=height // window_size)
             ssim = sum(ssim) * divider / (width // window_size * height // window_size)
 
-    return ssim
+    return ssim"""

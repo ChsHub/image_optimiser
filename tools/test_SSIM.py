@@ -9,12 +9,12 @@ from utility.os_interface import get_dir_list
 from utility.path_str import get_full_path
 from utility.utilities import is_file_type
 
-from image_optimiser.perception_ssim import get_perception, cv_open_image
+from image_optimiser.perception_ssim import get_perception, cv_open_image, get_temp_image
 
 
 def test_SSIM():
     with Logger(_max_count_logfiles=10):
-        path = "D:\Bilder\Anime&Manga\Artworks\Artists\KA 2015/unknown artist"
+        from tools.paths import path
         images = get_dir_list(path)
         """for temp_name in images:
             temp_name = get_full_path(path, temp_name)
@@ -23,10 +23,10 @@ def test_SSIM():
 
         with TemporaryDirectory() as temp_path:
             with Image.open(temp_name) as img_x:
+                img_b_path = get_temp_image(1, img_x, temp_path)
+                value = get_perception(cv_open_image(temp_name), img_b_path)
 
-                temp_file, value = get_perception(1, img_x, cv_open_image(temp_name), temp_path)
-
-                value2 = -SSIM(img_x, Image.open(temp_file))
+                value2 = -SSIM(img_x, Image.open(img_b_path))
 
                 #with Timer('HOME MADE OLD'):
                  #   value3 = SSIM_old(img_x, Image.open(temp_file))
