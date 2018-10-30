@@ -1,9 +1,12 @@
 from logging import info
+
+from PIL import Image
 from utility.timer import Timer
 from utility.os_interface import write_file_data, delete_file
 from utility.utilities import get_file_type
 
 from image_optimiser.perception_ssim import get_perception, cv_open_image, get_temp_image
+from tools.SSIM import SSIM
 
 
 def get_max_perception(size):
@@ -19,7 +22,7 @@ def find_minimum(temp_path, original_file, img):
     img_resolution = img.size[0] * img.size[1]
     original_cv = cv_open_image(original_file)
 
-    temp_file = ''
+    temp_file_path = ''
     target_value = get_max_perception(img_resolution)
 
     log_data = str(img_resolution) + '\t' + str(target_value)
@@ -27,9 +30,10 @@ def find_minimum(temp_path, original_file, img):
     while high > low:
 
         quality = (low + high) // 2
-        delete_file(temp_file)
+        delete_file(temp_file_path)
         temp_file_path = get_temp_image(quality=quality, img=img, temp_path=temp_path)
-        temp_file, value = get_perception(original=original_cv, temp_file_path=temp_file_path)
+        value = -SSIM(img, Image.open(temp_file_path))
+        # value = get_perception(original=original_cv, temp_file_path=temp_file_path)
 
         log_data += '\t' + str(quality) + '\t' + str(value)
 
@@ -39,6 +43,6 @@ def find_minimum(temp_path, original_file, img):
             low, high = low, quality - 1
 
     with Timer('WRITE LOG'):
-        write_file_data('.', 'quality+' + get_file_type(temp_file) + '.log', log_data + '\n', mode='a')
+        write_file_data('.', 'quality+' + get_file_type(temp_file_path) + '.log', log_data + '\n', mode='a')
 
-    return temp_file
+    return temp_file_path

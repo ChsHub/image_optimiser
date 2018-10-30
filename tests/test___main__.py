@@ -42,7 +42,7 @@ def test_accept_file_trash():
 def test_is_compressable(name, palette, ext):
     with MockImage(name, 10, palette=palette, extension=ext) as mock:
         result = is_compressable(mock.image)  # , (mock.temp_path, mock.file_name), types, trash_path)
-        assert result
+        assert result # TODO TEST FALSE
 
 
 @given(text(min_size=1, alphabet='a'), integers(min_value=1, max_value=2))
@@ -67,15 +67,14 @@ def test_is_compressable_trans(name, palette):
 @given(text(min_size=1, alphabet='abcshtwdfw'), integers(min_value=0, max_value=5), booleans(),
        integers(min_value=0, max_value=3))
 def test_optimise_image(file_name, ext, insta_delete, palette):
-
+    types = (".jpg", ".png", ".jpeg")
     with MockImage(file_name, 10, extension=ext, palette=palette) as mock:
-        old_size, new_size = optimise_image((mock.temp_path, mock.file_name), (".jpg", ".png", ".jpeg"), insta_delete)
+        old_size, new_size = optimise_image((mock.temp_path, mock.file_name), types, insta_delete)
 
         assert old_size >= 0
         assert new_size >= 0
-        assert exists(mock.temp_path + '/TRASH') != insta_delete
+        assert exists(mock.temp_path + '/TRASH') != insta_delete or '.'+ get_file_type(mock.full_path) not in types
         assert type(old_size) == type(new_size) == int
-
 
         assert exists(mock.full_path) == (old_size == 0)
 
@@ -91,6 +90,14 @@ def test_optimise_image_old_smaller(file_name, insta_delete, types):
         assert old_size == 0
         assert new_size == 0
         assert exists(mock.full_path)
+
+
+@given(integers(), integers(), text(), booleans())
+def test_optimise_image_abort(number, number2, types, insta_delete):
+    old_size, new_size = optimise_image((number, number2), types, insta_delete)
+
+    assert old_size == number
+    assert new_size == number2
 
 
 @given(text(min_size=1, alphabet='abcdefghijklmnop'), booleans())
@@ -137,6 +144,7 @@ if __name__ == '__main__':
 
     test_optimise_image()
     test_optimise_image_old_smaller()
+    test_optimise_image_abort()
 
     test_convert()
     test_convert_path()

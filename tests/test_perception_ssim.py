@@ -32,11 +32,9 @@ def test_cv_open_image_fail2():
 def test_get_perception(quality):
     with MockImage('a', 10) as image:
         original = cv_open_image(image.full_path)
+        temp_image_path = get_temp_image(quality, image.image, image.temp_path)
+        value = get_perception(original, temp_image_path)
 
-        temp_file, value = get_perception(quality, image.image, original, image.temp_path)
-
-        cv_image = cv_open_image(temp_file)
-        assert type(cv_image) == ndarray
         assert value <= 0.0
         assert value >= -1.0
 

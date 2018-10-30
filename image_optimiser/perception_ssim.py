@@ -39,7 +39,7 @@ def get_perception(original, temp_file_path):
     :param temp_file_path: Destination for temporary image
     :return: Path of new image, and it's SSIM value
     """
-    with Timer('SSIM'):
+    with Timer('CV SSIM'):
         value = -float(compare_ssim(original, cv_open_image(temp_file_path), multichannel=True))
 
     return value

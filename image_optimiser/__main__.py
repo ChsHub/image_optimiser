@@ -33,19 +33,20 @@ def accept_file(file, types, trash_path):
     return True
 
 
-# file tuple
-def is_compressable(img):
-    if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+def is_compressable(image):
+    """
+    Test if transparent layer is used.
+    :param image: PIL image object
+    :return: True if no alpha layer exists or alpha layer mostly not transparent.
+    """
+    if image.mode in ('RGBA', 'LA') or (image.mode == 'P' and 'transparency' in image.info):
         info("TRANSPARENT IMAGE")
-
-        alpha = img.split()[-1]
-        pixel_data = alpha.load()
-        color_sum = 0
-        for x in range(alpha.width):
-            for y in range(alpha.height):
-                color_sum += pixel_data[x, y]
         # if large parts are transparent don't convert to RGB
-        return color_sum / (255 * alpha.width * alpha.height) >= 0.99
+        alpha = image.split()[-1]
+        alpha = alpha.getdata()
+        color_sum = sum(alpha)
+
+        return color_sum / (255 * len(alpha)) >= 0.99
 
     return True
 
@@ -57,7 +58,7 @@ def get_new_picture(temp_path, temp_name, img):
 
 
 def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
-    if type(file[0]) == int:
+    if type(file[0]) == int:  # TODO Remove maybe
         return file
     with Timer('OPT FILE: ' + get_full_path(*file)):
         try:
@@ -113,20 +114,13 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
     return file
 
 
-class Optimiser:
-    def __init__(self, insta_delete, logger):
-        self.logger = logger
-        self.insta_delete = insta_delete
-
-    def optimise_image(self, file):
-        if self.logger:
-            with Logger(10, parent=self.logger):
-                return optimise_image(file, insta_delete=self.insta_delete)
-        else:
-            return optimise_image(file, insta_delete=self.insta_delete)
+def run_process(*args):
+    file, insta_delete, log_file = args[0]
+    with Logger(10, parent=log_file):
+        return optimise_image(file, insta_delete=insta_delete)
 
 
-def convert(path, insta_delete=False, logger=None):
+def convert(path, insta_delete=False, log_file=None):
     if exists(path):
         with Timer("convert"):
             types = [".jpg", ".png", ".jpeg"]
@@ -137,7 +131,8 @@ def convert(path, insta_delete=False, logger=None):
 
             for workers in [cpu_count() // 2, 1]:
                 with ProcessPoolExecutor(max_workers=workers) as executor:
-                    images = executor.map(Optimiser(insta_delete, logger).optimise_image, images)
+                    images = executor.map(run_process,
+                                          zip(images, [insta_delete] * len(images), [log_file] * len(images)))
                 images = list(images)
                 if images:
                     sizes = list(filter(lambda x: type(x[0]) == int, images))
@@ -145,7 +140,7 @@ def convert(path, insta_delete=False, logger=None):
                         total_old_size1, total_new_size1 = zip(*sizes)
                         total_old_size += sum(total_old_size1)
                         total_new_size += sum(total_new_size1)
-                    images = filter(lambda x: type(x[0]) == str, images)
+                    images = list(filter(lambda x: type(x[0]) == str, images))
 
             result = "SAVED: " + format_byte(total_old_size - total_new_size)
             info(result)
@@ -159,7 +154,7 @@ def init():
             try:
                 s_input = input('OPTIMISE PATH: ')
                 if len(s_input) > 2:
-                    convert(s_input, logger=logger)
+                    convert(s_input, log_file=logger.log_name)
                     sleep(60)
             except Exception as e:
                 exception(e)
