@@ -20,7 +20,7 @@ def test_get_max_perception(size):
 def test_find_minimum(n):
     file_name = 'a'
     with MockImage(file_name, n) as image:
-        temp_file = find_minimum(temp_path=image.temp_path, original_file=image.full_path, img=image.image)
+        temp_file = find_minimum(temp_path=image.temp_path, img=image.image)
         assert (exists(temp_file))
 
 
@@ -29,7 +29,7 @@ def test_find_minimum_example():
     image = Image.open(image_name)
     with TemporaryDirectory() as temp_path:
         image.save(get_full_path(temp_path, image_name))
-        temp_file = find_minimum(temp_path=temp_path, original_file=image_name, img=image)
+        temp_file = find_minimum(temp_path=temp_path, img=image)
         assert (exists(temp_file))
 
 

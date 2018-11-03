@@ -115,7 +115,7 @@ def test_convert_path(file_name):
 
 def test_get_new_picture():
     with MockImage('a', 10) as mock:
-        path, name = get_new_picture(mock.temp_path, mock.full_path, mock.image)
+        path, name = get_new_picture(mock.temp_path, mock.image)
         assert exists(get_full_path(path, name))
 
 

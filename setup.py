@@ -1,4 +1,5 @@
 from distutils.core import setup
+import setuptools
 
 setup(
     name='image_optimiser',
@@ -9,7 +10,7 @@ setup(
     packages=['image_optimiser'],
     license='MIT License',
     classifiers=['Programming Language :: Python :: 3.6'],
-    install_requires=['scikit-image', 'opencv-python', 'numpy', 'Cython', 'pillow', 'utility']
+    install_requires=['Cython', 'pillow', 'utility']
     # http://scikit-image.org/docs/dev/install.html
     # python.exe -m pip install scikit-image
 )

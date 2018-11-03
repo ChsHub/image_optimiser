@@ -52,8 +52,8 @@ def is_compressable(image):
 
 
 # returns new file: (path, name)
-def get_new_picture(temp_path, temp_name, img):
-    new_file = find_minimum(temp_path, temp_name, img)
+def get_new_picture(temp_path, img):
+    new_file = find_minimum(temp_path, img)
     return temp_path, new_file.split('/')[-1]
 
 
@@ -83,7 +83,7 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
                                 old_file_size = get_file_size(temp_name)
                                 info(old_file_size)
 
-                                new_file = get_new_picture(temp_path, temp_name, img)
+                                new_file = get_new_picture(temp_path, img)
 
                                 new_file_size = get_file_size(*new_file)
 
@@ -117,6 +117,7 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
 def run_process(*args):
     file, insta_delete, log_file = args[0]
     with Logger(10, parent=log_file):
+        info(file)
         return optimise_image(file, insta_delete=insta_delete)
 
 
@@ -142,8 +143,9 @@ def convert(path, insta_delete=False, log_file=None):
                         total_new_size += sum(total_new_size1)
                     images = list(filter(lambda x: type(x[0]) == str, images))
 
-            result = "SAVED: " + format_byte(total_old_size - total_new_size)
-            info(result)
+            info("FAILED: " + str(len(images)) + ' FILES')
+            info("FAILED: " + str(images))
+            info("SAVED: " + format_byte(total_old_size - total_new_size))
     else:
         return "Path doesn't exist"
 
@@ -154,6 +156,7 @@ def init():
             try:
                 s_input = input('OPTIMISE PATH: ')
                 if len(s_input) > 2:
+                    info('INPUT: ' + s_input)
                     convert(s_input, log_file=logger.log_name)
                     sleep(60)
             except Exception as e:
