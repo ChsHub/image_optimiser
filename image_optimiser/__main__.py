@@ -60,6 +60,7 @@ def get_new_picture(temp_path, img):
 def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
     if type(file[0]) == int:  # TODO Remove maybe
         return file
+
     with Timer('OPT FILE: ' + get_full_path(*file)):
         try:
             if is_file_type(file[1], types):
@@ -103,8 +104,9 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
 
                                 else:
                                     info("OLD FILE SMALLER")
-
                             # no else
+                # no else
+            # no else
             return 0, 0
         except MemoryError as e:
             exception('OUT OF MEMORY')
@@ -116,49 +118,61 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
 
 def run_process(*args):
     file, insta_delete, log_file = args[0]
-    with Logger(10, parent=log_file):
+    with Logger(10, parent=log_file, debug=True):
         info(file)
         return optimise_image(file, insta_delete=insta_delete)
 
 
-def convert(path, insta_delete=False, log_file=None):
-    if exists(path):
-        with Timer("convert"):
-            types = [".jpg", ".png", ".jpeg"]
-            images = depth_search_files(path, types)
-            info("FILES: " + str(len(images)))
+def convert(path: str, insta_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
+            types=(".jpg", ".png", ".jpeg")):
+    """
+    Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
+    :param path: Target directory.
+    :param insta_delete: If True instantly delete old images. If False move old images to a new folder called "TRASH"
+    :param log_file: Logging file path string.
+    :param processes: Number of parallel processes, that run the image optimization. More processes might block other
+                      programs and use more memory.
+    :param types: Types of input images. (Must be supported by PIL)
+    """
+    if not exists(path):
+        path = path[1:-1]  # Try to remove brackets
+        if not exists(path):
+            info("Directory does not exist")
+            return
 
-            total_old_size, total_new_size = 0, 0
+    with Timer("convert"):
 
-            for workers in [cpu_count() // 2, 1]:
-                with ProcessPoolExecutor(max_workers=workers) as executor:
-                    images = executor.map(run_process,
-                                          zip(images, [insta_delete] * len(images), [log_file] * len(images)))
-                images = list(images)
-                if images:
-                    sizes = list(filter(lambda x: type(x[0]) == int, images))
-                    if sizes:
-                        total_old_size1, total_new_size1 = zip(*sizes)
-                        total_old_size += sum(total_old_size1)
-                        total_new_size += sum(total_new_size1)
-                    images = list(filter(lambda x: type(x[0]) == str, images))
+        images = depth_search_files(path, types)
+        info("FILES: " + str(len(images)))
+        total_old_size = 0
+        total_new_size = 0
 
-            info("FAILED: " + str(len(images)) + ' FILES')
-            info("FAILED: " + str(images))
-            info("SAVED: " + format_byte(total_old_size - total_new_size))
-    else:
-        return "Path doesn't exist"
+        for workers in [processes, 1]:
+            with ProcessPoolExecutor(max_workers=workers) as executor:
+                images = executor.map(run_process,
+                                      zip(images, [insta_delete] * len(images), [log_file] * len(images)))
+            images = list(images)
+            if images:
+                sizes = list(filter(lambda x: type(x[0]) == int, images))
+                if sizes:
+                    total_old_size1, total_new_size1 = zip(*sizes)
+                    total_old_size += sum(total_old_size1)
+                    total_new_size += sum(total_new_size1)
+                images = list(filter(lambda x: type(x[0]) == str, images))
+
+        info("FAILED: " + str(len(images)) + ' FILES')
+        info("FAILED: " + str(images))
+        info("SAVED: " + format_byte(total_old_size - total_new_size))
 
 
-def init():
+def init(wait=60):
     if __name__ == "__main__":
-        with Logger(10, debug=True) as logger:
+        with Logger(10, debug=False) as logger:
             try:
                 s_input = input('OPTIMISE PATH: ')
-                if len(s_input) > 2:
-                    info('INPUT: ' + s_input)
-                    convert(s_input, log_file=logger.log_name)
-                    sleep(60)
+                info('INPUT: ' + s_input)
+                convert(s_input, log_file=logger.log_name)
+                sleep(wait)
             except Exception as e:
                 exception(e)
         sys_exit()

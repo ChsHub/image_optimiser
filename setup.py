@@ -1,5 +1,4 @@
-from distutils.core import setup
-import setuptools
+from setuptools import setup
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -15,5 +14,5 @@ setup(
     packages=['image_optimiser'],
     license='MIT License',
     classifiers=['Programming Language :: Python :: 3.6'],
-    install_requires=['Cython', 'pillow', 'utility']
+    install_requires=['SSIM-PIL', 'pillow', 'utility']
 )

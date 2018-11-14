@@ -1,18 +1,13 @@
-from logging import info
-
 from PIL import Image
 from utility.timer import Timer
 from utility.os_interface import write_file_data, delete_file
 from utility.utilities import get_file_type
-
-from image_optimiser.perception_ssim import get_perception, cv_open_image, get_temp_image
 from SSIM_PIL import compare_ssim
+from image_optimiser.perception_ssim import get_temp_image
 
 
 def get_max_perception(size):
-    # 741104
-    # 324900
-    return -0.997 + ((size - 741104) / 300000000)  # min(-0.950, )  # -0.997 *
+    return -0.997 + ((size - 741104) / 300000000)
 
 
 # binary search
@@ -31,8 +26,8 @@ def find_minimum(temp_path, img):
         quality = (low + high) // 2
         delete_file(temp_file_path)
         temp_file_path = get_temp_image(quality=quality, img=img, temp_path=temp_path)
-        value = -compare_ssim(img, Image.open(temp_file_path))
-        # value = get_perception(original=original_cv, temp_file_path=temp_file_path)
+        with Image.open(temp_file_path) as temp_image:
+            value = -compare_ssim(img, temp_image)
 
         log_data += '\t' + str(quality) + '\t' + str(value)
 
