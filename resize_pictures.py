@@ -9,7 +9,7 @@ from utility.logger import Logger
 
 
 def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
-                     convert_type=(".png", ".jpg", ".RW2", ".tif"),
+                     convert_type=(".png", ".jpg", ".RW2", ".tif", ".bmp"),
                      save_type="jpg", palette="RGB", width=0, delete_largest=False, crop=None):
     if not path:
         pass

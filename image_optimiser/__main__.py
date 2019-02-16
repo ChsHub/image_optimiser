@@ -3,9 +3,8 @@ from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
 from os import cpu_count
 from shutil import move, copyfile
-from sys import exit as sys_exit
+from sys import exit as sys_exit, stdout
 from tempfile import TemporaryDirectory
-from time import sleep
 
 from PIL import Image
 from utility.logger import Logger
@@ -52,8 +51,8 @@ def is_compressable(image):
 
 
 # returns new file: (path, name)
-def get_new_picture(temp_path, img):
-    new_file = find_minimum(temp_path, img)
+def get_new_picture(temp_path, image):
+    new_file = find_minimum(temp_path, image)
     return temp_path, new_file.split('/')[-1]
 
 
@@ -73,18 +72,18 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
                         temp_name = get_full_path(temp_path, 'a' + get_file_type(file[1]))  # TODO Rename
                         copyfile(get_full_path(*file), temp_name)
 
-                        with Image.open(temp_name) as img:
+                        with Image.open(temp_name) as image:
 
-                            if is_compressable(img):
+                            if is_compressable(image):
 
-                                if img.mode != 'RGB':
-                                    img = img.convert('RGB')
+                                if image.mode != 'RGB':
+                                    image = image.convert('RGB')
                                 # no else
 
                                 old_file_size = get_file_size(temp_name)
                                 info(old_file_size)
 
-                                new_file = get_new_picture(temp_path, img)
+                                new_file = get_new_picture(temp_path, image)
 
                                 new_file_size = get_file_size(*new_file)
 
@@ -117,10 +116,19 @@ def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
 
 
 def run_process(*args):
+    """
+    Optimize a single image.
+    :param args: Arguments for the optimise_image method.
+    :return: Output from the optimise_image method.
+    """
     file, insta_delete, log_file = args[0]
-    with Logger(10, parent=log_file, debug=True):
+    with Logger(10, parent=log_file, debug=False):
         info(file)
-        return optimise_image(file, insta_delete=insta_delete)
+        result = optimise_image(file, insta_delete=insta_delete)
+        # 'https://stackoverflow.com/a/50819819/7062162'
+        stdout.write("-")  # prints a dash for each image
+        stdout.flush()  # ensures bar is displayed incrementally
+        return result
 
 
 def convert(path: str, insta_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
@@ -134,11 +142,12 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
                       programs and use more memory.
     :param types: Types of input images. (Must be supported by PIL)
     """
+
+    # Strip possible parenthesis and test if exists
+    path = path.strip('"').strip("'")
     if not exists(path):
-        path = path[1:-1]  # Try to remove brackets
-        if not exists(path):
-            info("Directory does not exist")
-            return
+        info("Directory does not exist")
+        return
 
     with Timer("convert"):
 
@@ -167,12 +176,13 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
 
 def init(wait=60):
     if __name__ == "__main__":
-        with Logger(10, debug=False) as logger:
+        with Logger(10, debug=True) as logger:
             try:
-                s_input = input('OPTIMISE PATH: ')
-                info('INPUT: ' + s_input)
-                convert(s_input, log_file=logger.log_name)
-                sleep(wait)
+                s_input = True
+                while s_input:
+                    s_input = input('OPTIMISE PATH: ')
+                    info('INPUT: ' + s_input)
+                    convert(s_input, log_file=logger.log_name)
             except Exception as e:
                 exception(e)
         sys_exit()
