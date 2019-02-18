@@ -1,6 +1,6 @@
 from tempfile import TemporaryDirectory
 
-import Image
+from PIL import Image
 from utility.path_str import get_full_path
 
 

@@ -1,4 +1,5 @@
 # python3
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
 from os import cpu_count
@@ -14,10 +15,41 @@ from utility.path_str import get_full_path
 from utility.timer import Timer
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
-from image_optimiser.opti import find_minimum
+from image_optimiser.optimize import find_minimum
 
 
-def accept_file(file, types, trash_path):
+def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length=100):
+    """
+    Call in a loop to create terminal progress bar
+    :param iteration: current iteration
+    :param total: total iteration
+    :param prefix: prefix string
+    :param decimals: positive number of decimals in percent complete
+    :param bar_length: character length of bar
+    """
+
+    str_format = "{0:." + str(decimals) + "f}"
+
+    percents = str_format.format(100 * (iteration / float(total)))
+
+    filled_length = int(round(bar_length * iteration / float(total)))
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+    output = '\r%s |%s| %s%s' % (prefix, bar, percents, '%')
+    sys.stdout.write(output)
+
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
+
+
+def accept_file(file:str, types:tuple, trash_path:str) -> bool:
+    """
+    Test if file is of right type and not already converted
+    :param file: Image path
+    :param types: Acceptable image types
+    :param trash_path: Path for old images
+    :return: True if convertable or false if not
+    """
     if file[0].endswith('TRASH'):
         info('already compressed')
         return False
@@ -32,7 +64,7 @@ def accept_file(file, types, trash_path):
     return True
 
 
-def is_compressable(image):
+def is_compressable(image:Image) -> bool:
     """
     Test if transparent layer is used.
     :param image: PIL image object
@@ -50,14 +82,29 @@ def is_compressable(image):
     return True
 
 
-# returns new file: (path, name)
-def get_new_picture(temp_path, image):
+def get_new_picture(temp_path:str, image:Image) -> (str, str):
+    """
+    Convert the image to new type
+    :param temp_path: Temporary path to store temporary images
+    :param image: Original PIL image object
+    :return: Path and file name of new image
+    """
     new_file = find_minimum(temp_path, image)
     return temp_path, new_file.split('/')[-1]
 
 
-def optimise_image(file, types=(".jpg", ".png", ".jpeg"), insta_delete=False):
-    if type(file[0]) == int:  # TODO Remove maybe
+def optimise_image(file:(str, str), types:(str,)=(".jpg", ".png", ".jpeg"), insta_delete:bool=False) -> (int, int):
+    """
+    Convert image to smaller size, if possible
+    :param file: Path and file name of input image
+    :param types: Allowed types for input images
+    :param insta_delete: True if old files should be deleted, False if old files should be move to a trash directory
+    :return: Size of original and new image file, Zeroes if old file can't be made smaller,
+             Input file path if exception occurred
+    """
+
+    # Return if image was already successfully converted
+    if type(file[0]) == int:
         return file
 
     with Timer('OPT FILE: ' + get_full_path(*file)):
@@ -121,13 +168,13 @@ def run_process(*args):
     :param args: Arguments for the optimise_image method.
     :return: Output from the optimise_image method.
     """
-    file, insta_delete, log_file = args[0]
+    file, insta_delete, log_file, index, images_len = args[0]
     with Logger(10, parent=log_file, debug=False):
         info(file)
         result = optimise_image(file, insta_delete=insta_delete)
         # 'https://stackoverflow.com/a/50819819/7062162'
-        stdout.write("-")  # prints a dash for each image
-        stdout.flush()  # ensures bar is displayed incrementally
+        print_progress(index, images_len)
+
         return result
 
 
@@ -158,8 +205,10 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
 
         for workers in [processes, 1]:
             with ProcessPoolExecutor(max_workers=workers) as executor:
+                # Set arguments for each process
                 images = executor.map(run_process,
-                                      zip(images, [insta_delete] * len(images), [log_file] * len(images)))
+                                      zip(images, [insta_delete] * len(images), [log_file] * len(images),
+                                          range(1, len(images) + 1), [len(images)] * len(images)))
             images = list(images)
             if images:
                 sizes = list(filter(lambda x: type(x[0]) == int, images))
@@ -174,7 +223,7 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
         info("SAVED: " + format_byte(total_old_size - total_new_size))
 
 
-def init(wait=60):
+def init():
     if __name__ == "__main__":
         with Logger(10, debug=True) as logger:
             try:

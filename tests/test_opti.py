@@ -7,7 +7,7 @@ from mock_image import MockImage
 from utility.os_interface import exists
 from utility.path_str import get_full_path
 
-from image_optimiser.opti import *
+from image_optimiser.optimize import *
 
 
 @given(integers(min_value=1))

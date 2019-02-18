@@ -2,7 +2,7 @@ from hypothesis import given
 from hypothesis.strategies import integers
 from utility.os_interface import exists
 
-from image_optimiser.perception_ssim import get_temp_image
+from image_optimiser.temporary_image import get_temp_image
 
 from mock_image import MockImage
 

@@ -1,12 +1,13 @@
 import setuptools
 from distutils.core import setup
+from image_optimiser import __version__
 
 with open("README.md", "r") as f:
     long_description = f.read()
 
 setup(
     name='image_optimiser',
-    version='0.2dev',
+    version=__version__,
     description='Optimise image size',
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -1,6 +1,6 @@
 from shutil import copy2, move
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import text, integers, booleans, SearchStrategy
 from image_optimiser.__main__ import *
 from mock_image import MockImage
@@ -103,6 +103,8 @@ def test_optimise_image_abort(number, number2, types, insta_delete):
     assert new_size == number2
 
 
+
+@settings(deadline=None)
 @given(text(min_size=1, alphabet='abcdefghijklmnop'), booleans())
 def test_convert(file_name, insta_delete):
     with MockImage(file_name, 10) as mock:
@@ -118,18 +120,18 @@ def test_get_new_picture():
 
 
 # https://medium.com/@george.shuklin/how-to-test-if-name-main-1928367290cb
-@given(text())
-def test_init(user_input):
-    if not exists(user_input):
-        with patch('builtins.input', side_effect=[user_input]):
-            import image_optimiser.__main__ as main
-            a = main
-            a.__name__ = '__main__'
-            try:
-                main.init(0)
-            except SystemExit as e:
-                # Assert proper exit
-                assert True
+def test_init():
+
+    import image_optimiser.__main__ as main
+    a = main
+    a.__name__ = '__main__'
+    main.input = lambda x: '' # replace input() function
+    try:
+        main.init()
+    except Exception as e:
+        print(e)
+        assert False
+    assert True
 
 
 if __name__ == '__main__':
