@@ -16,6 +16,7 @@ from utility.timer import Timer
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
 from image_optimiser.optimize import find_minimum
+from gc import collect  # TODO REMOVE
 
 
 def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length=100):
@@ -34,15 +35,12 @@ def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length
 
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
-    output = '\r%s |%s| %s%s' % (prefix, bar, percents, '%')
+    output = '\r%s |%s| %s%s' % (prefix, bar, percents, '% ')
     sys.stdout.write(output)
-
-    if iteration == total:
-        sys.stdout.write('\n')
     sys.stdout.flush()
 
 
-def accept_file(file:str, types:tuple, trash_path:str) -> bool:
+def accept_file(file: str, types: tuple, trash_path: str) -> bool:
     """
     Test if file is of right type and not already converted
     :param file: Image path
@@ -64,7 +62,7 @@ def accept_file(file:str, types:tuple, trash_path:str) -> bool:
     return True
 
 
-def is_compressable(image:Image) -> bool:
+def is_compressable(image: Image) -> bool:
     """
     Test if transparent layer is used.
     :param image: PIL image object
@@ -82,7 +80,7 @@ def is_compressable(image:Image) -> bool:
     return True
 
 
-def get_new_picture(temp_path:str, image:Image) -> (str, str):
+def get_new_picture(temp_path: str, image: Image) -> (str, str):
     """
     Convert the image to new type
     :param temp_path: Temporary path to store temporary images
@@ -93,7 +91,8 @@ def get_new_picture(temp_path:str, image:Image) -> (str, str):
     return temp_path, new_file.split('/')[-1]
 
 
-def optimise_image(file:(str, str), types:(str,)=(".jpg", ".png", ".jpeg"), insta_delete:bool=False) -> (int, int):
+def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), insta_delete: bool = False) -> (
+        int, int):
     """
     Convert image to smaller size, if possible
     :param file: Path and file name of input image
@@ -169,13 +168,13 @@ def run_process(*args):
     :return: Output from the optimise_image method.
     """
     file, insta_delete, log_file, index, images_len = args[0]
-    with Logger(10, parent=log_file, debug=False):
-        info(file)
-        result = optimise_image(file, insta_delete=insta_delete)
-        # 'https://stackoverflow.com/a/50819819/7062162'
-        print_progress(index, images_len)
+    info(file)
+    result = optimise_image(file, insta_delete=insta_delete)
+    # 'https://stackoverflow.com/a/50819819/7062162'
+    print_progress(index, images_len)
 
-        return result
+    collect()
+    return result
 
 
 def convert(path: str, insta_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
@@ -196,27 +195,32 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
         info("Directory does not exist")
         return
 
-    with Timer("convert"):
+    with Timer("CONVERT"):
 
         images = depth_search_files(path, types)
         info("FILES: " + str(len(images)))
         total_old_size = 0
         total_new_size = 0
+        processes = min(processes, len(images))
 
-        for workers in [processes, 1]:
-            with ProcessPoolExecutor(max_workers=workers) as executor:
-                # Set arguments for each process
-                images = executor.map(run_process,
-                                      zip(images, [insta_delete] * len(images), [log_file] * len(images),
-                                          range(1, len(images) + 1), [len(images)] * len(images)))
-            images = list(images)
-            if images:
-                sizes = list(filter(lambda x: type(x[0]) == int, images))
-                if sizes:
-                    total_old_size1, total_new_size1 = zip(*sizes)
-                    total_old_size += sum(total_old_size1)
-                    total_new_size += sum(total_new_size1)
-                images = list(filter(lambda x: type(x[0]) == str, images))
+        # If there are images convert them
+        if images:
+            for workers in [processes, 1]:
+                with ProcessPoolExecutor(max_workers=workers) as executor:
+                    # Set arguments for each process
+                    images = executor.map(run_process,
+                                          zip(images, [insta_delete] * len(images), [log_file] * len(images),
+                                              range(1, len(images) + 1), [len(images)] * len(images)))
+                    print()
+                images = list(images)
+                if images:
+                    sizes = list(filter(lambda x: type(x[0]) == int, images))
+                    if sizes:
+                        total_old_size1, total_new_size1 = zip(*sizes)
+                        total_old_size += sum(total_old_size1)
+                        total_new_size += sum(total_new_size1)
+                    images = list(filter(lambda x: type(x[0]) == str, images))
+        # No else
 
         info("FAILED: " + str(len(images)) + ' FILES')
         info("FAILED: " + str(images))
@@ -225,7 +229,7 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
 
 def init():
     if __name__ == "__main__":
-        with Logger(10, debug=True) as logger:
+        with Logger(10) as logger:
             try:
                 s_input = True
                 while s_input:
