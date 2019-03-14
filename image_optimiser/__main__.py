@@ -1,10 +1,9 @@
 # python3
-import sys
 from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
 from os import cpu_count
 from shutil import move, copyfile
-from sys import exit as sys_exit, stdout
+from sys import exit as sys_exit
 from tempfile import TemporaryDirectory
 
 from PIL import Image
@@ -16,12 +15,11 @@ from utility.timer import Timer
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
 from image_optimiser.optimize import find_minimum
-from gc import collect  # TODO REMOVE
 
 
 def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length=100):
     """
-    Call in a loop to create terminal progress bar
+    Call in a loop to create terminal progress bar (https://stackoverflow.com/a/34325723)
     :param iteration: current iteration
     :param total: total iteration
     :param prefix: prefix string
@@ -29,15 +27,12 @@ def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length
     :param bar_length: character length of bar
     """
 
-    str_format = "{0:." + str(decimals) + "f}"
-
-    percents = str_format.format(100 * (iteration / float(total)))
-
+    str_format = "{0:.%sf}" % decimals
+    percents = str_format.format(100 * iteration / float(total))
     filled_length = int(round(bar_length * iteration / float(total)))
     bar = '█' * filled_length + '-' * (bar_length - filled_length)
-    output = '\r%s |%s| %s%s' % (prefix, bar, percents, '% ')
-    sys.stdout.write(output)
-    sys.stdout.flush()
+
+    print('\r%s%s %s%%' % (prefix, bar, percents), end='')
 
 
 def accept_file(file: str, types: tuple, trash_path: str) -> bool:
@@ -170,10 +165,8 @@ def run_process(*args):
     file, insta_delete, log_file, index, images_len = args[0]
     info(file)
     result = optimise_image(file, insta_delete=insta_delete)
-    # 'https://stackoverflow.com/a/50819819/7062162'
-    print_progress(index, images_len)
+    print_progress(index, images_len, bar_length=50)
 
-    collect()
     return result
 
 
@@ -211,15 +204,18 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
                     images = executor.map(run_process,
                                           zip(images, [insta_delete] * len(images), [log_file] * len(images),
                                               range(1, len(images) + 1), [len(images)] * len(images)))
-                    print()
-                images = list(images)
-                if images:
+
+                    images = list(images)
                     sizes = list(filter(lambda x: type(x[0]) == int, images))
                     if sizes:
                         total_old_size1, total_new_size1 = zip(*sizes)
                         total_old_size += sum(total_old_size1)
                         total_new_size += sum(total_new_size1)
                     images = list(filter(lambda x: type(x[0]) == str, images))
+
+            print_progress(iteration=1, total=1)
+            print()
+
         # No else
 
         info("FAILED: " + str(len(images)) + ' FILES')

@@ -15,59 +15,67 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
         pass
         # return
 
+    # Create target directory with appropriate name
     files = get_dir_list(path)
     if width != 0:
         new_dir = path + "/" + save_type + " " + palette + " " + str(quality) + " w" + str(width)
     else:
         new_dir = path + "/" + save_type + " " + palette + " " + str(quality) + " s" + str(factor)
-
     make_directory(new_dir)
 
+    # Iterate all files and resize
     info(str(len(files)) + " FILES")
     for i, file in enumerate(filter(lambda image: is_file_type(image, convert_type), files)):
 
         try:
 
-            img = Image.open(path + "/" + file)
-            img = img.convert(palette)  # TODO makes files bigger
-            x, y = img.size
-            # img = img.rotate(90, expand=True) # rotate
-            if width != 0:
-                factor = width / x
+            with Image.open(path + "/" + file) as  img:
+                # Convert to RGB, because of palette resize issues
+                img = img.convert(palette)  # TODO makes files bigger
 
-            size = (int(x * factor), int(y * factor))
-            img = img.resize(size, resample=sample)
-            if crop:
-                img = img.crop(box=crop)
+                # Resize with factor or direct value
+                x, y = img.size
+                # img = img.rotate(90, expand=True) # rotate
+                if width != 0:
+                    factor = width / x
+                size = (int(x * factor), int(y * factor))
+                img = img.resize(size, resample=sample)
 
-            new_file = file
-            if save_type:
-                new_file = file.split(".")
-                new_file[-1] = save_type
-                new_file = ".".join(new_file)
-                new_file = prefix + new_file.replace("..", ".")
+                # Crop image
+                if crop:
+                    img = img.crop(box=crop)
 
-            new_file_path = get_full_path(new_dir, new_file)
-            if not exists(new_file_path):
-                img.save(new_file_path, quality=quality, optimize=True)
-                info(str(i + 1) + ' ' + new_file + ' ' + str(size))
-            else:
-                info("FILE ALREADY CONVERTED: " + new_file_path)
+                # Get new file name
+                new_file = file
+                if save_type:
+                    new_file = file.split(".")
+                    new_file[-1] = save_type
+                    new_file = ".".join(new_file)
+                    new_file = prefix + new_file.replace("..", ".")
 
-            if delete_largest:
-                trash_path = get_full_path(path, "TRASH")
-                make_directory(trash_path)
-                # if new file larger
-                if get_file_size(new_dir, new_file) > get_file_size(path, file):
-
-                    move_file(new_dir, trash_path, new_file)
-                    if exists(new_file_path):
-                        error("MOVE FAIL: " + new_file_path)
+                # Save new image
+                new_file_path = get_full_path(new_dir, new_file)
+                if not exists(new_file_path):
+                    img.save(new_file_path, quality=quality, optimize=True)
+                    info(str(i + 1) + ' ' + new_file + ' ' + str(size))
                 else:
-                    move_file(path, trash_path, file)
-                    if exists(get_full_path(path, file)):
-                        error("MOVE FAIL: " + get_full_path(path, file))
-            # no else
+                    info("FILE ALREADY CONVERTED: " + new_file_path)
+
+                # Delete largest image
+                if delete_largest:
+                    trash_path = get_full_path(path, "TRASH")
+                    make_directory(trash_path)
+                    # if new file larger
+                    if get_file_size(new_dir, new_file) > get_file_size(path, file):
+
+                        move_file(new_dir, trash_path, new_file)
+                        if exists(new_file_path):
+                            error("MOVE FAIL: " + new_file_path)
+                    else:
+                        move_file(path, trash_path, file)
+                        if exists(get_full_path(path, file)):
+                            error("MOVE FAIL: " + get_full_path(path, file))
+                # no else
         except Exception as e:
             exception(e)
 
