@@ -2,14 +2,13 @@
 from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
 from os import cpu_count
+from os.path import isdir, isfile
 from shutil import move, copyfile
-from sys import exit as sys_exit
 from tempfile import TemporaryDirectory
 
 from PIL import Image
 from utility.logger import Logger
-from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, exists, \
-    delete_file
+from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, delete_file
 from utility.path_str import get_full_path
 from utility.timer import Timer
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
@@ -35,7 +34,7 @@ def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length
     print('\r%s%s %s%%' % (prefix, bar, percents), end='')
 
 
-def accept_file(file: str, types: tuple, trash_path: str) -> bool:
+def accept_file(file: (str,), types: list, trash_path: str) -> bool:
     """
     Test if file is of right type and not already converted
     :param file: Image path
@@ -47,11 +46,11 @@ def accept_file(file: str, types: tuple, trash_path: str) -> bool:
         info('already compressed')
         return False
 
-    elif exists(trash_path):
+    elif isdir(trash_path):
         # if image in TRASH, then don't compress again
         file_name = remove_file_type(file[1])
         for extension in types:
-            if exists(get_full_path(trash_path, file_name + extension)):
+            if isfile(get_full_path(trash_path, file_name + extension)):
                 return False
 
     return True
@@ -184,7 +183,7 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
 
     # Strip possible parenthesis and test if exists
     path = path.strip('"').strip("'")
-    if not exists(path):
+    if not isdir(path):
         info("Directory does not exist")
         return
 
@@ -234,7 +233,6 @@ def init():
                     convert(s_input, log_file=logger.log_name)
             except Exception as e:
                 exception(e)
-        sys_exit()
 
 
 init()
