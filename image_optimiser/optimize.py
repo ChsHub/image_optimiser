@@ -1,9 +1,9 @@
 from math import log
-
-from os.path import isfile
 from os import remove
+
 from PIL import Image
 from SSIM_PIL import compare_ssim
+from os.path import isfile
 
 from image_optimiser.temporary_image import get_temp_image
 

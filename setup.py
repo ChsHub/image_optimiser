@@ -11,7 +11,7 @@ setup(
     description='Optimise image size',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author='Christian',
+    author='ChsHub',
     author_email='christian1193@web.com',
     packages=['image_optimiser'],
     license='MIT License',

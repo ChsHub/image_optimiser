@@ -1,12 +1,11 @@
-from os import makedirs
-from os.path import isdir, isfile
-from shutil import copy2, move
+from shutil import copy2
 
 from hypothesis import given, settings
-from hypothesis.strategies import text, integers, booleans, SearchStrategy
+from hypothesis.strategies import text, integers, booleans
+from os.path import isdir, isfile, join
+
 from image_optimiser.__main__ import *
 from mock_image import MockImage
-from unittest.mock import patch
 
 
 def test_accept_file():
@@ -23,7 +22,7 @@ def test_accept_file_exists():
         trash_path = mock.temp_path + '/TRASH'
         makedirs(trash_path)
 
-        copy2(mock.full_path, get_full_path(trash_path, mock.file_name))
+        copy2(mock.full_path, join(trash_path, mock.file_name))
 
         result = accept_file((mock.temp_path, mock.file_name), [".jpg", ".png", ".jpeg"], trash_path)
         assert not result
@@ -33,7 +32,7 @@ def test_accept_file_trash():
     with MockImage() as mock:
         trash_path = mock.temp_path + '/TRASH'
         makedirs(trash_path)
-        move(mock.full_path, get_full_path(trash_path, mock.file_name))
+        move(mock.full_path, join(trash_path, mock.file_name))
 
         result = accept_file((trash_path, mock.file_name), [".jpg", ".png", ".jpeg"], trash_path)
         assert not result
@@ -114,12 +113,6 @@ def test_convert(file_name, insta_delete):
         assert isdir(mock.temp_path + '/TRASH') != insta_delete
 
 
-def test_get_new_picture():
-    with MockImage('a', 10) as mock:
-        path, name = get_new_picture(mock.temp_path, mock.image)
-        assert isfile(get_full_path(path, name))
-
-
 # https://medium.com/@george.shuklin/how-to-test-if-name-main-1928367290cb
 def test_init():
 
@@ -148,7 +141,4 @@ if __name__ == '__main__':
     test_optimise_image_abort()
 
     test_convert()
-
-    test_get_new_picture()
-
     test_init()

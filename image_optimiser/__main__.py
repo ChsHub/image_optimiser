@@ -1,16 +1,14 @@
-# python3
 from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
-from os import cpu_count
-from os.path import isdir, isfile
+from os import cpu_count, makedirs, remove
 from shutil import move, copyfile
 from tempfile import TemporaryDirectory
 
 from PIL import Image
+from os.path import isdir, isfile, split, join
+from timerpy import Timer
 from utility.logger import Logger
-from utility.os_interface import depth_search_files, get_file_size, make_directory, move_file, delete_file
-from utility.path_str import get_full_path
-from utility.timer import Timer
+from utility.os_interface import depth_search_files, get_file_size, move_file
 from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
 from image_optimiser.optimize import find_minimum
@@ -50,7 +48,7 @@ def accept_file(file: (str,), types: list, trash_path: str) -> bool:
         # if image in TRASH, then don't compress again
         file_name = remove_file_type(file[1])
         for extension in types:
-            if isfile(get_full_path(trash_path, file_name + extension)):
+            if isfile(join(trash_path, file_name + extension)):
                 return False
 
     return True
@@ -74,19 +72,8 @@ def is_compressable(image: Image) -> bool:
     return True
 
 
-def get_new_picture(temp_path: str, image: Image) -> (str, str):
-    """
-    Convert the image to new type
-    :param temp_path: Temporary path to store temporary images
-    :param image: Original PIL image object
-    :return: Path and file name of new image
-    """
-    new_file = find_minimum(temp_path, image)
-    return temp_path, new_file.split('/')[-1]
-
-
-def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), insta_delete: bool = False) -> (
-        int, int):
+def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), insta_delete: bool = False) \
+        -> (int, int):
     """
     Convert image to smaller size, if possible
     :param file: Path and file name of input image
@@ -100,17 +87,17 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
     if type(file[0]) == int:
         return file
 
-    with Timer('OPT FILE: ' + get_full_path(*file)):
+    with Timer('OPT FILE: ' + join(*file), log_function=info):
         try:
             if is_file_type(file[1], types):
 
-                trash_path = get_full_path(file[0], 'TRASH')
+                trash_path = join(file[0], 'TRASH')
                 if accept_file(file, types, trash_path):
 
                     with TemporaryDirectory() as temp_path:
 
-                        temp_name = get_full_path(temp_path, 'a' + get_file_type(file[1]))  # TODO Rename
-                        copyfile(get_full_path(*file), temp_name)
+                        temp_name = join(temp_path, 'a' + get_file_type(file[1]))  # TODO Rename
+                        copyfile(join(*file), temp_name)
 
                         with Image.open(temp_name) as image:
 
@@ -123,21 +110,22 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
                                 old_file_size = get_file_size(temp_name)
                                 info(old_file_size)
 
-                                new_file = get_new_picture(temp_path, image)
-
+                                new_file = find_minimum(temp_path, image)
+                                new_file = split(new_file)
                                 new_file_size = get_file_size(*new_file)
 
                                 if old_file_size > new_file_size:
 
                                     if insta_delete:
-                                        delete_file(*file)
+                                        remove(join(*file))
                                     else:
-                                        make_directory(trash_path)
+                                        if not isdir(trash_path):
+                                            makedirs(trash_path)
                                         move_file(file[0], trash_path, file[1])  # delete old file
 
                                     # rename and move new file
-                                    move(get_full_path(new_file[0], new_file[1]),
-                                         get_full_path(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
+                                    move(join(new_file[0], new_file[1]),
+                                         join(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
 
                                     return old_file_size, new_file_size
 
@@ -148,6 +136,7 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
             # no else
             return 0, 0
         except MemoryError as e:
+            exception(e)
             exception('OUT OF MEMORY')
         except Exception as e:
             exception(e)
@@ -187,7 +176,7 @@ def convert(path: str, insta_delete: bool = False, log_file: str = None, process
         info("Directory does not exist")
         return
 
-    with Timer("CONVERT"):
+    with Timer("CONVERT", log_function=info):
 
         images = depth_search_files(path, types)
         info("FILES: " + str(len(images)))
@@ -236,3 +225,5 @@ def init():
 
 
 init()
+
+# TODO transparancy for webp
