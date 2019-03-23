@@ -1,227 +1,102 @@
-from concurrent.futures import ProcessPoolExecutor
-from logging import info, error, exception
-from os import cpu_count, makedirs, remove
-from shutil import move, copyfile
-from tempfile import TemporaryDirectory
+"""
+Accept input and filter wrong arguments.
+"""
 
-from PIL import Image
-from os.path import isdir, isfile, split, join
-from timerpy import Timer
+from logging import info, exception
+from os import cpu_count
+from os import walk
+
+from PIL.Image import Image
+from os.path import isdir, isfile, join, splitext, split
 from utility.logger import Logger
-from utility.os_interface import depth_search_files, get_file_size, move_file
-from utility.utilities import format_byte, is_file_type, remove_file_type, get_file_type
 
-from image_optimiser.optimize import find_minimum
+from image_optimiser.runner import convert
 
 
-def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length=100):
-    """
-    Call in a loop to create terminal progress bar (https://stackoverflow.com/a/34325723)
-    :param iteration: current iteration
-    :param total: total iteration
-    :param prefix: prefix string
-    :param decimals: positive number of decimals in percent complete
-    :param bar_length: character length of bar
-    """
-
-    str_format = "{0:.%sf}" % decimals
-    percents = str_format.format(100 * iteration / float(total))
-    filled_length = int(round(bar_length * iteration / float(total)))
-    bar = '█' * filled_length + '-' * (bar_length - filled_length)
-
-    print('\r%s%s %s%%' % (prefix, bar, percents), end='')
-
-
-def accept_file(file: (str,), types: list, trash_path: str) -> bool:
+def accept_file(path: str, file_name: str, trash_directory: str, types: list) -> bool:
     """
     Test if file is of right type and not already converted
-    :param file: Image path
+    :param path: Image path
+    :param file_name: Image file name
+    :param trash_directory: Path for old images
     :param types: Acceptable image types
-    :param trash_path: Path for old images
     :return: True if convertable or false if not
     """
-    if file[0].endswith('TRASH'):
-        info('already compressed')
+    if path.endswith(trash_directory):
+        info('%s already compressed' % file_name)
         return False
 
-    elif isdir(trash_path):
-        # if image in TRASH, then don't compress again
-        file_name = remove_file_type(file[1])
+    # TODO Should this be removed?
+    elif isdir(join(path, trash_directory)):
+        # If image in TRASH, then don't compress again
+        file_name, _ = splitext(file_name) # TODO upper and lower
         for extension in types:
-            if isfile(join(trash_path, file_name + extension)):
+            if isfile(join(path, trash_directory, file_name + extension)):
                 return False
 
     return True
 
 
-def is_compressable(image: Image) -> bool:
-    """
-    Test if transparent layer is used.
-    :param image: PIL image object
-    :return: True if no alpha layer exists or alpha layer mostly not transparent.
-    """
-    if image.mode in ('RGBA', 'LA') or (image.mode == 'P' and 'transparency' in image.info):
-        info("TRANSPARENT IMAGE")
-        # if large parts are transparent don't convert to RGB
-        alpha = image.split()[-1]
-        alpha = alpha.getdata()
-        color_sum = sum(alpha)
-
-        return color_sum / (255 * len(alpha)) >= 0.99
-
-    return True
-
-
-def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), insta_delete: bool = False) \
-        -> (int, int):
-    """
-    Convert image to smaller size, if possible
-    :param file: Path and file name of input image
-    :param types: Allowed types for input images
-    :param insta_delete: True if old files should be deleted, False if old files should be move to a trash directory
-    :return: Size of original and new image file, Zeroes if old file can't be made smaller,
-             Input file path if exception occurred
-    """
-
-    # Return if image was already successfully converted
-    if type(file[0]) == int:
-        return file
-
-    with Timer('OPT FILE: ' + join(*file), log_function=info):
-        try:
-            if is_file_type(file[1], types):
-
-                trash_path = join(file[0], 'TRASH')
-                if accept_file(file, types, trash_path):
-
-                    with TemporaryDirectory() as temp_path:
-
-                        temp_name = join(temp_path, 'a' + get_file_type(file[1]))  # TODO Rename
-                        copyfile(join(*file), temp_name)
-
-                        with Image.open(temp_name) as image:
-
-                            if is_compressable(image):
-
-                                if image.mode != 'RGB':
-                                    image = image.convert('RGB')
-                                # no else
-
-                                old_file_size = get_file_size(temp_name)
-                                info(old_file_size)
-
-                                new_file = find_minimum(temp_path, image)
-                                new_file = split(new_file)
-                                new_file_size = get_file_size(*new_file)
-
-                                if old_file_size > new_file_size:
-
-                                    if insta_delete:
-                                        remove(join(*file))
-                                    else:
-                                        if not isdir(trash_path):
-                                            makedirs(trash_path)
-                                        move_file(file[0], trash_path, file[1])  # delete old file
-
-                                    # rename and move new file
-                                    move(join(new_file[0], new_file[1]),
-                                         join(file[0], remove_file_type(file[1]) + get_file_type(new_file[1])))
-
-                                    return old_file_size, new_file_size
-
-                                else:
-                                    info("OLD FILE SMALLER")
-                            # no else
-                # no else
-            # no else
-            return 0, 0
-        except MemoryError as e:
-            exception(e)
-            exception('OUT OF MEMORY')
-        except Exception as e:
-            exception(e)
-        error(str(file))
-    return file
-
-
-def run_process(*args):
-    """
-    Optimize a single image.
-    :param args: Arguments for the optimise_image method.
-    :return: Output from the optimise_image method.
-    """
-    file, insta_delete, log_file, index, images_len = args[0]
-    info(file)
-    result = optimise_image(file, insta_delete=insta_delete)
-    print_progress(index, images_len, bar_length=50)
-
-    return result
-
-
-def convert(path: str, insta_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
-            types=(".jpg", ".png", ".jpeg")):
+def optimise(image_input, types=(".jpg", ".png", ".jpeg"), new_type: str = '.webp', depth_search: bool = True,
+             direct_delete: bool = False, trash_directory='TRASH', log_file: str = None,
+             processes: int = cpu_count() // 2):
     """
     Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
-    :param path: Target directory.
-    :param insta_delete: If True instantly delete old images. If False move old images to a new folder called "TRASH"
+    :param image_input: PILLOW image object, or path of target directory, or image
+    :param types: Allowed types of input images. (Must be supported by PILLOW)
+    :param new_type: Type of output images. (Must be supported by PILLOW and have quality range of 1 to 100. -> .webp or .jpg)
+    :param depth_search: Search in sub-directories for images.
+    :param direct_delete: If True instantly delete old images. If False move old images to a new folder called "TRASH"
+    :param trash_directory: Directory name for moving old files, if direct_delete is enabled.
     :param log_file: Logging file path string.
     :param processes: Number of parallel processes, that run the image optimization. More processes might block other
                       programs and use more memory.
-    :param types: Types of input images. (Must be supported by PIL)
     """
+    images = []
 
-    # Strip possible parenthesis and test if exists
-    path = path.strip('"').strip("'")
-    if not isdir(path):
-        info("Directory does not exist")
-        return
+    # Log unexpected exceptions
+    try:
+        if type(image_input) == str:
+            # Strip possible parenthesis
+            path = image_input.strip('"').strip("'")
 
-    with Timer("CONVERT", log_function=info):
+            if isdir(path):
+                # Find all files
+                for root, _, files in walk(path):
+                    if not root.endswith(trash_directory): # Exclude trash directory
+                        for file in files:
+                            if accept_file(root, file, trash_directory, types):
+                                images.append((root, file))
 
-        images = depth_search_files(path, types)
-        info("FILES: " + str(len(images)))
-        total_old_size = 0
-        total_new_size = 0
-        processes = min(processes, len(images))
+                    if not depth_search:
+                        break
+            elif isfile(path):
+                root, file = split(path)
+                if accept_file(root, file, trash_directory, types):
+                    images.append((root, file))
 
-        # If there are images convert them
-        if images:
-            for workers in [processes, 1]:
-                with ProcessPoolExecutor(max_workers=workers) as executor:
-                    # Set arguments for each process
-                    images = executor.map(run_process,
-                                          zip(images, [insta_delete] * len(images), [log_file] * len(images),
-                                              range(1, len(images) + 1), [len(images)] * len(images)))
+            else:
+                raise AttributeError('Path not found.')
 
-                    images = list(images)
-                    sizes = list(filter(lambda x: type(x[0]) == int, images))
-                    if sizes:
-                        total_old_size1, total_new_size1 = zip(*sizes)
-                        total_old_size += sum(total_old_size1)
-                        total_new_size += sum(total_new_size1)
-                    images = list(filter(lambda x: type(x[0]) == str, images))
+        elif type(image_input) == Image:
+            raise NotImplementedError # TODO
+        else:
+            raise AttributeError('Input invalid.')
 
-            print_progress(iteration=1, total=1)
-            print()
+        convert(images, direct_delete, log_file, processes, types)
 
-        # No else
-
-        info("FAILED: " + str(len(images)) + ' FILES')
-        info("FAILED: " + str(images))
-        info("SAVED: " + format_byte(total_old_size - total_new_size))
+    except Exception as e:
+        exception(e)
 
 
 def init():
     if __name__ == "__main__":
         with Logger(10) as logger:
-            try:
-                s_input = True
-                while s_input:
-                    s_input = input('OPTIMISE PATH: ')
-                    info('INPUT: ' + s_input)
-                    convert(s_input, log_file=logger.log_name)
-            except Exception as e:
-                exception(e)
+            s_input = True
+            while s_input:
+                s_input = input('OPTIMISE PATH: ')
+                info('INPUT: ' + s_input)
+                optimise(s_input, log_file=logger.log_name)
 
 
 init()

@@ -1,5 +1,5 @@
-from .__main__ import convert, optimise_image
+from .__main__ import optimise
 
-__all__ = ['convert', 'optimise_image']
+__all__ = ['optimise']
 __name__ = 'image_optimiser'
-__version__ = '2.0.3.dev0'
+__version__ = '3.0.0.dev0'

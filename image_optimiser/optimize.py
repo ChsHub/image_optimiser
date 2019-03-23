@@ -1,3 +1,7 @@
+"""
+Find the output image with optimal quality.
+"""
+
 from math import log
 from os import remove
 
@@ -17,21 +21,22 @@ def get_max_perception(size: (int, int)) -> float:
     size = size[0] * size[1]
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
 
+ # TODO
 def perceived_value(value):
     const = 0.5
     value = const * log(value)
 
     return value
 
-
-def find_minimum(temp_path:str, img:Image)->str:
+# TODO remove logging? Analyse data
+def find_minimum(temp_path: str, img: Image) -> str:
     """
     Find optimal image quality using a binary search.
     :param temp_path:
     :param img:
     :return:
     """
-    low, high = 36, 100 # 30, 100
+    low, high = 36, 100  # 30, 100
     temp_file_path = ''
     target_value = get_max_perception(img.size)
     log_data = "\n" + str(img.size) + '\t' + str(target_value)
@@ -56,7 +61,6 @@ def find_minimum(temp_path:str, img:Image)->str:
 
         # Log data
         log_data += '\n' + str(quality) + '\t' + str(value)
-
 
     # Write log data to file
     with open('quality+' + temp_file_path[-4:] + '.log', mode='a') as f:
