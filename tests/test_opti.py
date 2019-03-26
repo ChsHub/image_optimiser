@@ -3,7 +3,6 @@ from tempfile import TemporaryDirectory
 from hypothesis import given, settings
 from hypothesis.strategies import integers
 from os.path import isfile, join
-from utility.path_str import get_full_path
 
 from image_optimiser.optimize import *
 from mock_image import MockImage

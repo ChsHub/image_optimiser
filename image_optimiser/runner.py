@@ -35,7 +35,7 @@ def print_progress(iteration: int, total: int, prefix='', decimals=1, bar_length
     print('\r%s%s %s%%' % (prefix, bar, percents), end='')
 
 
-def is_compressable(image: Image) -> bool:
+def _has_no_alpha(image: Image) -> bool:
     """
     Test if transparent layer is used.
     :param image: PIL image object
@@ -47,19 +47,20 @@ def is_compressable(image: Image) -> bool:
         alpha = image.split()[-1]
         alpha = alpha.getdata()
         color_sum = sum(alpha)
-
         return color_sum / (255 * len(alpha)) >= 0.99
 
     return True
 
 
-def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), insta_delete: bool = False) \
-        -> (int, int):
+def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), direct_delete: bool = False,
+                   new_type: str = '.webp') \
+        -> (int, int) or (str, str):
     """
     Convert image to smaller size, if possible
     :param file: Path and file name of input image
     :param types: Allowed types for input images
-    :param insta_delete: True if old files should be deleted, False if old files should be move to a trash directory
+    :param direct_delete: True if old files should be deleted, False if old files should be move to a trash directory
+    :param new_type: Type of output images.
     :return: Size of original and new image file, Zeroes if old file can't be made smaller,
              Input file path if exception occurred
     """
@@ -68,58 +69,61 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
     if type(file[0]) == int:
         return file
     if type(file) != tuple:
-        raise TypeError
+        return file
+
     file_name, extension = splitext(file[1])
+    trash_path = join(file[0], 'TRASH')
+
+    if not extension.lower() in types:
+        return file
 
     with Timer('OPT FILE: ' + join(*file), log_function=info):
         try:
-            if extension in types:
 
-                trash_path = join(file[0], 'TRASH')
+            with TemporaryDirectory() as temp_path:
+                # Copy file into temporary directory
+                temp_file = join(temp_path, 'a' + extension)
+                copyfile(join(*file), temp_file)
 
-                with TemporaryDirectory() as temp_path:
-                    # Copy file into temporary directory
-                    temp_name = join(temp_path, 'a' + extension)
-                    copyfile(join(*file), temp_name)
+                with Image.open(temp_file) as image:
 
-                    with Image.open(temp_name) as image:
+                    if _has_no_alpha(image):
+                        if image.mode != 'RGB':
+                            image = image.convert('RGB')
+                    elif new_type != '.webp':
+                        return 0, 0
+                    # no else
 
-                        if is_compressable(image):
+                    old_file_size = getsize(temp_file)
+                    info(old_file_size)
 
-                            if image.mode != 'RGB':
-                                image = image.convert('RGB')
-                            # no else
+                    # Get new optimized image, and retrieve size
+                    new_file = find_minimum(temp_path, image)
+                    new_file_size = getsize(new_file)
 
-                            old_file_size = getsize(temp_name)
-                            info(old_file_size)
+                    if old_file_size > new_file_size:
 
-                            # Get new optimized image, and retrieve size
-                            new_file = find_minimum(temp_path, image)
-                            new_file_size = getsize(new_file)
+                        if direct_delete:
+                            # Delete old file
+                            remove(join(*file))
+                        else:
+                            # Move to trash
+                            try:
+                                makedirs(trash_path)
+                            except Exception as e:
+                                info(e)  # Log OSError
+                            try:
+                                move(join(*file), join(trash_path, file[1]))
+                            except Exception as e:
+                                info(e)  # Log OSError
 
-                            if old_file_size > new_file_size:
+                        # Replace the old file
+                        move(new_file, join(file[0], file_name + '.webp'))  # TODO make changeable type .webp
 
-                                if insta_delete:
-                                    # Delete old file
-                                    remove(join(*file))
-                                else:
-                                    # Move to trash
-                                    try:
-                                        makedirs(trash_path)
-                                    except Exception as e:
-                                        info(e)  # Log OSError
-                                    try:
-                                        move(join(*file), join(trash_path, file[1]))
-                                    except Exception as e:
-                                        info(e)  # Log OSError
+                        return old_file_size, new_file_size
 
-                                # Replace the old file
-                                move(new_file, join(file[0], file_name + '.webp'))  # TODO make changeable type .webp
-
-                                return old_file_size, new_file_size
-
-                            else:
-                                info("OLD FILE SMALLER")
+                    else:
+                        info("OLD FILE SMALLER")
             # no else
             return 0, 0
         except MemoryError as e:
@@ -127,7 +131,8 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
             exception('OUT OF MEMORY')
         except Exception as e:
             exception(e)
-        error(str(file))
+
+    error(str(file))
     return file
 
 
@@ -137,16 +142,16 @@ def run_process(*args):
     :param args: Arguments for the optimise_image method.
     :return: Output from the optimise_image method.
     """
-    file, insta_delete, log_file, index, images_len = args[0]
+    file, insta_delete, log_file, index, images_len, new_type = args[0]
     info(file)
-    result = optimise_image(file, insta_delete=insta_delete)
+    result = optimise_image(file, direct_delete=insta_delete, new_type=new_type)
     print_progress(index, images_len + 1)
 
     return result
 
 
 def convert(images: list, direct_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
-            types=(".jpg", ".png", ".jpeg")):
+            types=(".jpg", ".png", ".jpeg"), new_type: str = '.webp'):
     """
     Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
     :param images: Target images.
@@ -155,6 +160,7 @@ def convert(images: list, direct_delete: bool = False, log_file: str = None, pro
     :param processes: Number of parallel processes, that run the image optimization. More processes might block other
                       programs and use more memory.
     :param types: Types of input images. (Must be supported by PIL)
+    :param new_type: Type of output images.
     """
 
     with Timer("CONVERT", log_function=info):
@@ -170,8 +176,11 @@ def convert(images: list, direct_delete: bool = False, log_file: str = None, pro
                 with ProcessPoolExecutor(max_workers=workers) as executor:
                     # Set arguments for each process
                     images = executor.map(run_process,
-                                          zip(images, [direct_delete] * len(images), [log_file] * len(images),
-                                              range(1, len(images) + 1), [len(images)] * len(images)))
+                                          zip(images, [direct_delete] * len(images),
+                                              [log_file] * len(images),
+                                              range(1, len(images) + 1),
+                                              [len(images)] * len(images),
+                                              [new_type] * len(images)))
 
                     images = list(images)  # Converting to list triggers exectuion
                     sizes = list(filter(lambda x: type(x[0]) == int, images))

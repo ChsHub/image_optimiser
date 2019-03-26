@@ -83,7 +83,7 @@ def optimise(image_input, types=(".jpg", ".png", ".jpeg"), new_type: str = '.web
         else:
             raise AttributeError('Input invalid.')
 
-        convert(images, direct_delete, log_file, processes, types)
+        convert(images, direct_delete=direct_delete, log_file=log_file, processes=processes, types=types, new_type=new_type)
 
     except Exception as e:
         exception(e)

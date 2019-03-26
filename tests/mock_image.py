@@ -1,8 +1,7 @@
+from os.path import join
 from tempfile import TemporaryDirectory
 
 from PIL import Image
-from utility.path_str import get_full_path
-
 
 class MockImage:
     def __init__(self, name='a', size=10, extension=1, palette=0):
@@ -23,7 +22,7 @@ class MockImage:
         self.temp_path = self._temp_dir.name
 
 
-        self.full_path = get_full_path(self.temp_path, self.file_name)
+        self.full_path = join(self.temp_path, self.file_name)
         self.image.save(self.full_path)
 
         return self
