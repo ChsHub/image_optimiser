@@ -3,6 +3,7 @@ Find the output image with optimal quality.
 """
 
 from math import log
+from multiprocessing import freeze_support
 from os import remove
 
 from PIL import Image
@@ -21,7 +22,7 @@ def get_max_perception(size: (int, int)) -> float:
     size = size[0] * size[1]
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
 
- # TODO
+ # TODO scale perceived value with image size
 def perceived_value(value):
     const = 0.5
     value = const * log(value)
@@ -67,3 +68,6 @@ def find_minimum(temp_path: str, img: Image) -> str:
         f.write(log_data + '\n')
 
     return temp_file_path
+
+if __name__ == "__main__":
+    freeze_support()

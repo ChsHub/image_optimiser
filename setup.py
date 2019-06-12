@@ -18,3 +18,4 @@ setup(
     classifiers=['Programming Language :: Python :: 3.7'],
     install_requires=['SSIM-PIL', 'pillow', 'utility']
 )
+# C:\Python37\python.exe -m pip install . --upgrade

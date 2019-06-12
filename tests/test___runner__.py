@@ -1,13 +1,12 @@
-from shutil import copy2, move
-
+from MockImage import MockImage
+from PIL import Image
+from PIL.Image import merge
 from hypothesis import given, settings
 from hypothesis.strategies import text, integers, booleans
 from os.path import isdir, isfile, join, splitext
 
 from image_optimiser.__main__ import *
 from image_optimiser.runner import _has_no_alpha, optimise_image
-from mock_image import MockImage
-from PIL import Image
 
 
 @given(text(min_size=1, alphabet='a'), integers(min_value=0, max_value=3), integers(min_value=0, max_value=6))
@@ -30,7 +29,7 @@ def test_is_compressable_trans(name, palette):
             for y in range(size):
                 alpha[x, y] = 0
 
-        mock.image = Image.merge(mock.image.mode, channels)
+        mock.image = merge(mock.image.mode, bands=channels)
 
         result = _has_no_alpha(mock.image)  # , (mock.temp_path, mock.file_name), types, trash_path)
         assert not result
@@ -51,12 +50,11 @@ def test_optimise_image(file_name, ext, insta_delete, palette, size):
             assert old_size >= 0
             assert new_size >= 0
             _, extension = splitext(mock.full_path)
-            assert isdir(mock.temp_path + '/TRASH') != insta_delete or extension not in types
+            # assert isdir(mock.temp_path + '/TRASH') != insta_delete or extension not in types TODO test in trash directory
             assert isfile(mock.full_path) == (old_size == 0)
 
 
 @given(text(min_size=1, alphabet='abcsht'), booleans(), integers(min_value=0, max_value=1))
-
 def test_optimise_image_old_smaller(file_name, insta_delete, types):
     with MockImage(file_name, 10, extension=6) as mock:
         mock.image.save(mock.full_path, quality=1, optimize=True)
@@ -65,7 +63,7 @@ def test_optimise_image_old_smaller(file_name, insta_delete, types):
 
         assert type(old_size) == type(new_size)
         assert type(old_size) == str or type(old_size) == int
-        assert isdir(mock.temp_path + '/TRASH') != insta_delete or old_size == 0
+        # assert isdir(mock.temp_path + '/TRASH') != insta_delete or old_size == 0 TODO in trash directory
 
 
 @given(integers(), integers(), text(), booleans())
@@ -83,7 +81,7 @@ def test_convert(file_name, insta_delete):
         inp = (mock.temp_path, mock.file_name)
         convert(images=[inp], direct_delete=insta_delete)
         # TODO more checks
-        assert isdir(join(mock.temp_path, 'TRASH')) != insta_delete
+        # assert isdir(join(mock.temp_path, 'TRASH')) != insta_delete TODO in trash directory
 
 
 if __name__ == '__main__':

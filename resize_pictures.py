@@ -1,7 +1,9 @@
 # encoding utf-8
+from os.path import join
+
 from PIL import Image
 from PIL.Image import LANCZOS, HAMMING, BILINEAR, LANCZOS, BICUBIC
-from utility.os_interface import make_directory, get_dir_list, is_file_type, get_file_size, get_full_path, exists, \
+from utility.os_interface import make_directory, get_dir_list, is_file_type, get_file_size, exists, \
     move_file
 
 from logging import info, error, exception
@@ -53,7 +55,7 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
                     new_file = prefix + new_file.replace("..", ".")
 
                 # Save new image
-                new_file_path = get_full_path(new_dir, new_file)
+                new_file_path = join(new_dir, new_file)
                 if not exists(new_file_path):
                     img.save(new_file_path, quality=quality, optimize=True)
                     info(str(i + 1) + ' ' + new_file + ' ' + str(size))
@@ -62,7 +64,7 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
 
                 # Delete largest image
                 if delete_largest:
-                    trash_path = get_full_path(path, "TRASH")
+                    trash_path = join(path, "TRASH")
                     make_directory(trash_path)
                     # if new file larger
                     if get_file_size(new_dir, new_file) > get_file_size(path, file):
@@ -72,8 +74,8 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
                             error("MOVE FAIL: " + new_file_path)
                     else:
                         move_file(path, trash_path, file)
-                        if exists(get_full_path(path, file)):
-                            error("MOVE FAIL: " + get_full_path(path, file))
+                        if exists(join(path, file)):
+                            error("MOVE FAIL: " + join(path, file))
                 # no else
         except Exception as e:
             exception(e)
@@ -83,9 +85,9 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
 
 if __name__ == "__main__":
     with Logger() as l:
-        resize_directory(path="",
-                         delete_largest=True,
+        resize_directory(path="E:\Anime current season\Ladies versus Butlers! (2009) [Doki][1920x1080 h264 BD FLAC]\_00-01-09.0_00-02-50.0_[Doki] Ladies versus Butlers - Tokuten Disc Music Clip (848x480 h264 DVD AAC) [963821F7]\\Neuer Ordner",
+                         delete_largest=False,
                         # convert_type=(".png")
-                         convert_type=(".png", ".jpg"),
-                         # width=1500, convert_type=(".jpg"),
-                         factor=1, quality=90, save_type="jpg")
+                         convert_type=(".png", ".jpg", ".bmp", ".webp"),
+                         # width=1100,# convert_type=(".jpg"),
+                         factor=1, quality=100, save_type="bmp", crop=(0,0,848,476))

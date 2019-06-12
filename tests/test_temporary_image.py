@@ -1,3 +1,4 @@
+from MockImage import MockImage
 from os.path import isfile
 
 from hypothesis import given
@@ -5,7 +6,6 @@ from hypothesis.strategies import integers
 
 from image_optimiser.temporary_image import get_temp_image
 
-from mock_image import MockImage
 
 
 @given(integers(min_value=10, max_value=1000), integers(min_value=1, max_value=100))

@@ -1,3 +1,5 @@
+from multiprocessing import freeze_support
+
 from os.path import join
 
 
@@ -13,3 +15,6 @@ def get_temp_image(quality:int, image, temp_path:str, file_type:str= ".webp") ->
     temp_file_path = join(temp_path, str(quality) + file_type)
     image.save(temp_file_path, quality=quality, optimize=True, method=6)
     return temp_file_path
+
+if __name__ == "__main__":
+    freeze_support()

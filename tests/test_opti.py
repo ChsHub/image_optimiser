@@ -1,11 +1,11 @@
 from tempfile import TemporaryDirectory
 
+from MockImage import MockImage
 from hypothesis import given, settings
 from hypothesis.strategies import integers
 from os.path import isfile, join
 
 from image_optimiser.optimize import *
-from mock_image import MockImage
 
 
 @given(integers(min_value=1), integers(min_value=1))
