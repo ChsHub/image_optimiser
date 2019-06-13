@@ -1,9 +1,8 @@
 """
 Accept input and filter wrong arguments.
 """
-
+from argparse import ArgumentParser
 from logging import info, exception
-from multiprocessing import freeze_support
 from os import cpu_count
 from os import walk
 
@@ -68,15 +67,15 @@ def optimise(image_input, types=(".jpg", ".png", ".jpeg", ".bmp"), new_type: str
 
 def init():
     if __name__ == "__main__":
-        freeze_support()
         with Logger(10, debug=False) as logger:
+            # Create argument parser
+            # parser = ArgumentParser(description='Process some integers.')
+
+            # Input loop
             s_input = True
             while s_input:
                 s_input = input('OPTIMISE PATH: ')
                 info('INPUT: ' + s_input)
                 optimise(s_input, log_file=logger.log_name)
 
-
 init()
-if __name__ == "__main__": # TODO remove all freeze support
-    freeze_support()
