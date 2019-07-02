@@ -1,11 +1,9 @@
 """
 Process the input images.
 """
-from collections import Set
 from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
-from multiprocessing import freeze_support
-from os import makedirs, remove, cpu_count
+from os import remove, cpu_count
 from shutil import copyfile
 from shutil import move
 from tempfile import TemporaryDirectory
@@ -98,7 +96,7 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
                 info(old_file_size)
 
                 # Get new optimized image, and retrieve size
-                new_file = find_minimum(temp_path, image)
+                new_file = find_minimum(temp_path, image, new_type)
                 new_file_size = getsize(new_file)
 
                 if old_file_size <= new_file_size:
@@ -197,6 +195,3 @@ def convert(images: list, direct_delete: bool = False, log_file: str = None, pro
         info("FAILED: " + str(len(images)) + ' FILES')
         info("FAILED: " + str(images))
         info("SAVED: " + format_byte(total_old_size - total_new_size))
-
-if __name__ == '__main__':
-    freeze_support()

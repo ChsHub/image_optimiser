@@ -3,12 +3,19 @@ from os.path import join
 
 from PIL import Image
 from PIL.Image import LANCZOS, HAMMING, BILINEAR, LANCZOS, BICUBIC
+from send2trash import send2trash
 from utility.os_interface import make_directory, get_dir_list, is_file_type, get_file_size, exists, \
     move_file
 
 from logging import info, error, exception
 from utility.logger import Logger
 
+def _delete_file(path, file):
+    full_path = join(path, file)
+    full_path = full_path.replace('/', '\\')
+    send2trash(full_path)
+    if exists(full_path):
+        error("MOVE FAIL: " + full_path)
 
 def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
                      convert_type=(".png", ".jpg", ".RW2", ".tif", ".bmp"),
@@ -64,18 +71,13 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
 
                 # Delete largest image
                 if delete_largest:
-                    trash_path = join(path, "TRASH")
-                    make_directory(trash_path)
+
                     # if new file larger
                     if get_file_size(new_dir, new_file) > get_file_size(path, file):
-
-                        move_file(new_dir, trash_path, new_file)
-                        if exists(new_file_path):
-                            error("MOVE FAIL: " + new_file_path)
+                        _delete_file(new_dir, new_file)
                     else:
-                        move_file(path, trash_path, file)
-                        if exists(join(path, file)):
-                            error("MOVE FAIL: " + join(path, file))
+                        _delete_file(path, file)
+
                 # no else
         except Exception as e:
             exception(e)
@@ -85,9 +87,9 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
 
 if __name__ == "__main__":
     with Logger() as l:
-        resize_directory(path="E:\Anime current season\Ladies versus Butlers! (2009) [Doki][1920x1080 h264 BD FLAC]\_00-01-09.0_00-02-50.0_[Doki] Ladies versus Butlers - Tokuten Disc Music Clip (848x480 h264 DVD AAC) [963821F7]\\Neuer Ordner",
+        resize_directory(path="",
                          delete_largest=False,
                         # convert_type=(".png")
                          convert_type=(".png", ".jpg", ".bmp", ".webp"),
                          # width=1100,# convert_type=(".jpg"),
-                         factor=1, quality=100, save_type="bmp", crop=(0,0,848,476))
+                         factor=0.57, quality=100, save_type="png")

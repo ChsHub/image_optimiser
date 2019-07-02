@@ -22,15 +22,17 @@ def get_max_perception(size: (int, int)) -> float:
     size = size[0] * size[1]
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
 
- # TODO scale perceived value with image size
+
+# TODO scale perceived value with image size
 def perceived_value(value):
     const = 0.5
     value = const * log(value)
 
     return value
 
+
 # TODO remove logging? Analyse data
-def find_minimum(temp_path: str, img: Image) -> str:
+def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
     """
     Find optimal image quality using a binary search.
     :param temp_path:
@@ -49,7 +51,7 @@ def find_minimum(temp_path: str, img: Image) -> str:
 
         # Create temporary image
         quality = (low + high) // 2
-        temp_file_path = get_temp_image(quality=quality, image=img, temp_path=temp_path)
+        temp_file_path = get_temp_image(quality=quality, image=img, temp_path=temp_path, new_type=new_type)
         # Open temporary image and compare to original
         with Image.open(temp_file_path) as temp_image:
             value = compare_ssim(img, temp_image, GPU=True)
@@ -68,6 +70,3 @@ def find_minimum(temp_path: str, img: Image) -> str:
         f.write(log_data + '\n')
 
     return temp_file_path
-
-if __name__ == "__main__":
-    freeze_support()

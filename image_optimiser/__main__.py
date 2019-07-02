@@ -22,7 +22,7 @@ def optimise(image_input, types=(".jpg", ".png", ".jpeg", ".bmp"), new_type: str
     :param types: Allowed types of input images. (Must be supported by PILLOW)
     :param new_type: Type of output images. (Must be supported by PILLOW and have quality range of 1 to 100. -> .webp or .jpg)
     :param depth_search: Search in sub-directories for images.
-    :param direct_delete: If True instantly delete old images. If False move old images to a new folder called "TRASH"
+    :param direct_delete: If True instantly delete old images. If False move old images to the OS's trash folder
     :param log_file: Logging file path string.
     :param processes: Number of parallel processes, that run the image optimization. More processes might block other
                       programs and use more memory.
