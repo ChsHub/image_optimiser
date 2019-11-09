@@ -47,7 +47,8 @@ def optimise(image_input, types=(".jpg", ".png", ".jpeg", ".bmp"), new_type: str
                 images.append((root, file))
 
             else:
-                raise AttributeError('Path not found.')
+                print('Path not found.')
+                return
 
         elif type(image_input) == Image:
             raise NotImplementedError  # TODO

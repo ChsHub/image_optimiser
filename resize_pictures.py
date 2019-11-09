@@ -10,12 +10,14 @@ from utility.os_interface import make_directory, get_dir_list, is_file_type, get
 from logging import info, error, exception
 from utility.logger import Logger
 
+
 def _delete_file(path, file):
     full_path = join(path, file)
     full_path = full_path.replace('/', '\\')
     send2trash(full_path)
     if exists(full_path):
         error("MOVE FAIL: " + full_path)
+
 
 def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
                      convert_type=(".png", ".jpg", ".RW2", ".tif", ".bmp"),
@@ -83,13 +85,3 @@ def resize_directory(path="", factor=1.0, sample=LANCZOS, prefix="", quality=85,
             exception(e)
 
     info("DONE")
-
-
-if __name__ == "__main__":
-    with Logger() as l:
-        resize_directory(path="",
-                         delete_largest=False,
-                        # convert_type=(".png")
-                         convert_type=(".png", ".jpg", ".bmp", ".webp"),
-                         # width=1100,# convert_type=(".jpg"),
-                         factor=0.57, quality=100, save_type="png")
