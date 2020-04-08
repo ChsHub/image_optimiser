@@ -1,14 +1,15 @@
+from os.path import splitext
+
 from MockImage import MockImage
-from PIL import Image
 from PIL.Image import merge
 from hypothesis import given, settings
 from hypothesis.strategies import text, integers, booleans
-from os.path import isdir, isfile, join, splitext
 
 from image_optimiser.__main__ import *
 from image_optimiser.runner import _has_no_alpha, optimise_image
 
 
+@settings(deadline=None)
 @given(text(min_size=1, alphabet='a'), integers(min_value=0, max_value=3), integers(min_value=0, max_value=6))
 def test_is_compressable(name, palette, ext):
     with MockImage(name, 10, palette=palette, extension=ext) as mock:
@@ -35,6 +36,7 @@ def test_is_compressable_trans(name, palette):
         assert not result
 
 
+@settings(deadline=None)
 @given(text(min_size=1, alphabet='abcshtwdfw'), integers(min_value=0, max_value=5), booleans(),
        integers(min_value=0, max_value=3), integers(min_value=8, max_value=1000))
 def test_optimise_image(file_name, ext, insta_delete, palette, size):
@@ -54,6 +56,7 @@ def test_optimise_image(file_name, ext, insta_delete, palette, size):
             assert isfile(mock.full_path) == (old_size == 0)
 
 
+@settings(deadline=None)
 @given(text(min_size=1, alphabet='abcsht'), booleans(), integers(min_value=0, max_value=1))
 def test_optimise_image_old_smaller(file_name, insta_delete, types):
     with MockImage(file_name, 10, extension=6) as mock:
@@ -66,6 +69,7 @@ def test_optimise_image_old_smaller(file_name, insta_delete, types):
         # assert isdir(mock.temp_path + '/TRASH') != insta_delete or old_size == 0 TODO in trash directory
 
 
+@settings(deadline=None)
 @given(integers(), integers(), text(), booleans())
 def test_optimise_image_abort(number, number2, types, insta_delete):
     old_size, new_size = optimise_image((number, number2), types, insta_delete)

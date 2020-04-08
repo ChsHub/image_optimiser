@@ -1,75 +1,71 @@
 """
-Accept input and filter wrong arguments.
+TODO Accept input and filter wrong arguments.
 """
-from logging import info, exception
+from logging import info
 from os import cpu_count
 from os import walk
-from os.path import isdir, isfile, split
+from os.path import isdir, isfile, split, abspath
 
-from PIL.Image import Image
 from logger_default import Logger
 from timerpy import Timer
 
 from image_optimiser.runner import convert
 
 
-def optimise(image_input, types=(".jpg", ".png", ".jpeg", ".bmp"), new_type: str = '.webp', depth_search: bool = True,
-             direct_delete: bool = False, log_file: str = None,
-             processes: int = cpu_count() // 2):
-    """
-    Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
-    :param image_input: Path of target directory, or image, or list of image paths
-    :param types: Allowed types of input images. (Must be supported by PILLOW)
-    :param new_type: Type of output images. (Must be supported by PILLOW and have quality range of 1 to 100. -> .webp or .jpg)
-    :param depth_search: Search in sub-directories for images.
-    :param direct_delete: If True instantly delete old images. If False move old images to the OS's trash folder
-    :param log_file: Logging file path string.
-    :param processes: Number of parallel processes, that run the image optimization. More processes might block other
-                      programs and use more memory.
-    """
-    images = []
+def _add_images(path_list, depth_search):
+    result = []
 
-    # Log unexpected exceptions
-    try:
-        if type(image_input) == str:
+    for path in path_list:
+        if type(path) == str:
             # Strip possible parenthesis
-            path = image_input.strip('"').strip("'")
-
+            path = path.strip('"').strip("'").strip("/")
+            path = abspath(path)
             if isdir(path):
                 # Find all files
                 for root, _, files in walk(path):
                     for file in files:
-                        images.append((root, file))
+                        result.append((root, file))
                     if not depth_search:
                         break
+
             elif isfile(path):
-                root, file = split(path)
-                images.append((root, file))
+                result.append(split(path))
+        elif type(path) == tuple:
+            result.append(path)
+    return result
 
-            else:
-                print('Path not found.')
-                return
 
-        elif type(image_input) == Image:
-            raise NotImplementedError  # TODO
-        elif type(image_input) == list:
-            for root, file in image_input:
-                images.append((root, file))
+def optimise(image_input, types: (str,) = (".jpg", ".png", ".jpeg", ".bmp"), new_type: str = '.webp',
+             depth_search: bool = True, direct_delete: bool = False, log_file: str = None,
+             processes: int = cpu_count() // 2):
+    """
+    Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
+    :param image_input: Path, or list of paths of target directory, or image
+    :param types: Allowed types of input images. (Must be supported by PILLOW)
+    :param new_type: Type of output images. (Must be supported by PILLOW and have quality range of 1 to 100. -> .webp or .jpg)
+    :param depth_search: Search in sub-directories for images.
+    :param direct_delete: If True instantly delete old images. If False move old images to the recycle bin
+    :param log_file: Logging file path string.
+    :param processes: Number of parallel processes, that run the image optimization. More processes might block other
+                      programs and use more memory.
+    """
 
-        else:
-            raise AttributeError('Input invalid.')
+    if type(image_input) in [str, tuple]:
+        image_input = [image_input]
 
+    if type(image_input) == list:
+        images = _add_images(image_input, depth_search)
         convert(images, direct_delete=direct_delete, log_file=log_file, processes=processes, types=types,
                 new_type=new_type)
-
-    except Exception as e:
-        exception(e)
+    else:
+        info('Input invalid.')
+        return
 
 
 def init():
     if __name__ == "__main__":
         with Logger(10, debug=False) as logger:
-            with Timer('Run-time'):
+            with Timer('Run-time', log_function=info):
                 # Create argument parser
                 # parser = ArgumentParser(description='Process some integers.')
 

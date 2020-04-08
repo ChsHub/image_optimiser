@@ -3,7 +3,7 @@ from multiprocessing import freeze_support
 from os.path import join
 
 
-def get_temp_image(quality:int, image, temp_path:str, new_type:str) -> str:
+def get_temp_image(quality: int, image, temp_path: str, new_type: str) -> str:
     """
     Save temporary image with specified quality setting.
     :param quality: Compression quality

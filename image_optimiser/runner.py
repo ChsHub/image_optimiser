@@ -70,8 +70,6 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
     # Return if image was already successfully converted
     if type(file[0]) == int:
         return file
-    if type(file) != tuple:
-        return file
 
     file_name, extension = splitext(file[1])
 
@@ -90,7 +88,7 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
                     info('CONVERT RGB')
                     if image.mode != 'RGB':
                         image = image.convert('RGB')
-                elif new_type != '.webp':  # If type is webp transparency is supported
+                elif new_type != '.webp':  # Only webp supports transparency
                     return 0, 0
                 # no else
 
@@ -135,10 +133,10 @@ def run_process(*args):
     :param args: Arguments for the optimise_image method.
     :return: Output from the optimise_image method.
     """
-    file, insta_delete, log_file, index, images_len, new_type, types = args[0]
+    file, instant_delete, log_file, index, images_len, new_type, types = args[0]
     with Logger(child=True):
         with Timer('OPT FILE: ' + join(*file), log_function=info):
-            result = optimise_image(file, direct_delete=insta_delete, new_type=new_type, types=types)
+            result = optimise_image(file, direct_delete=instant_delete, new_type=new_type, types=types)
     print_progress(index, images_len)
 
     return result

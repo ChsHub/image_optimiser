@@ -1,4 +1,4 @@
-from os.path import join
+from os.path import join, abspath
 from tempfile import TemporaryDirectory
 
 from MockImage import MockImage
@@ -25,9 +25,9 @@ def test_find_minimum(n):
 
 def test_find_minimum_example():
     image_name = 'test.png'
-    image = Image.open('test_images/test.png')
+    image = Image.open(abspath('test_images/test.png'))
     with TemporaryDirectory() as temp_path:
-        image.save(join(temp_path, image_name))
+        image.save(join(temp_path, image_name))  # Write test image to temporary file
         temp_file = find_minimum(temp_path=temp_path, img=image, new_type='.webp')
         assert (isfile(temp_file))
 
