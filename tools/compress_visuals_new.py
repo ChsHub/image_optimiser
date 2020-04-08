@@ -1,8 +1,5 @@
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-import numpy as np
-from collections import defaultdict
-from utility.logger import get_clean_date
+from logger_default.logger import get_clean_date
 
 
 def get_data():

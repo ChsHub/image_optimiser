@@ -3,4 +3,3 @@ Converts images to webp format and chooses optimal compression ratio (Smallest i
 
 ## Installation
 - Install python3 (3.6 recommended)
-- Get https://github.com/ChsHub/utility and install with pip

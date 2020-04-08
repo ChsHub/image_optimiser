@@ -16,6 +16,6 @@ setup(
     packages=['image_optimiser'],
     license='MIT License',
     classifiers=['Programming Language :: Python :: 3.7'],
-    install_requires=['SSIM-PIL', 'pillow', 'utility', 'format_byte', 'send2trash', 'timerpy']
+    install_requires=['SSIM-PIL', 'pillow', 'format_byte', 'send2trash', 'timerpy', 'loggger_default']
 )
 # C:\Python37\python.exe -m pip install . --upgrade
