@@ -3,7 +3,6 @@ Find the output image with optimal quality.
 """
 
 from math import log
-from multiprocessing import freeze_support
 from os import remove
 
 from PIL import Image
@@ -37,7 +36,8 @@ def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
     Find optimal image quality using a binary search.
     :param temp_path:
     :param img:
-    :return:
+    :param new_type:
+    :return: Smallest image with specified quality
     """
     low, high = 36, 100  # 30, 100
     temp_file_path = ''

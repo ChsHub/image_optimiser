@@ -1,9 +1,9 @@
+from os.path import join
 from tempfile import TemporaryDirectory
 
 from MockImage import MockImage
 from hypothesis import given, settings
 from hypothesis.strategies import integers
-from os.path import isfile, join
 
 from image_optimiser.optimize import *
 
@@ -13,12 +13,13 @@ def test_get_max_perception(x, y):
     assert (get_max_perception((x, y)) >= 0.0)
     assert (get_max_perception((x, y)) <= 1.0)
 
+
 @settings(deadline=None)
 @given(integers(min_value=10, max_value=200))
 def test_find_minimum(n):
     file_name = 'a'
     with MockImage(file_name, n) as image:
-        temp_file = find_minimum(temp_path=image.temp_path, img=image.image)
+        temp_file = find_minimum(temp_path=image.temp_path, img=image.image, new_type='.webp')
         assert isfile(temp_file)
 
 
@@ -27,7 +28,7 @@ def test_find_minimum_example():
     image = Image.open('test_images/test.png')
     with TemporaryDirectory() as temp_path:
         image.save(join(temp_path, image_name))
-        temp_file = find_minimum(temp_path=temp_path, img=image)
+        temp_file = find_minimum(temp_path=temp_path, img=image, new_type='.webp')
         assert (isfile(temp_file))
 
 

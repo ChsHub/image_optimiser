@@ -1,16 +1,17 @@
+from os import listdir
+from os.path import abspath
 from subprocess import Popen, run
-
-from utility.os_interface import get_dir_list, get_absolute_path
 
 
 def run_test(file):
-    command = 'coverage run --parallel-mode "%s"' % get_absolute_path(file).replace('/', '\\')
+    file = abspath(file)
+    command = 'coverage run --parallel-mode "%s"' % file
     return Popen(command)
 
+if __name__ == '__main__':
+    files = filter(lambda x: x.startswith('test_'), listdir('.'))
+    files = list(map(run_test, files))
+    files = list(map(lambda x: x.communicate(), files))
 
-files = filter(lambda x: x.startswith('test_'), get_dir_list('.'))
-files = list(map(run_test, files))
-files = list(map(lambda x: x.communicate(), files))
-
-run('coverage combine')
-run('coverage report -m')
+    run('coverage combine')
+    run('coverage report -m')

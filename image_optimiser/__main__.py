@@ -1,14 +1,14 @@
 """
 Accept input and filter wrong arguments.
 """
-from argparse import ArgumentParser
 from logging import info, exception
 from os import cpu_count
 from os import walk
+from os.path import isdir, isfile, split
 
 from PIL.Image import Image
-from os.path import isdir, isfile, join, splitext, split
-from utility.logger import Logger
+from logger_default import Logger
+from timerpy import Timer
 
 from image_optimiser.runner import convert
 
@@ -69,14 +69,16 @@ def optimise(image_input, types=(".jpg", ".png", ".jpeg", ".bmp"), new_type: str
 def init():
     if __name__ == "__main__":
         with Logger(10, debug=False) as logger:
-            # Create argument parser
-            # parser = ArgumentParser(description='Process some integers.')
+            with Timer('Run-time'):
+                # Create argument parser
+                # parser = ArgumentParser(description='Process some integers.')
 
-            # Input loop
-            s_input = True
-            while s_input:
-                s_input = input('OPTIMISE PATH: ')
-                info('INPUT: ' + s_input)
-                optimise(s_input, log_file=logger.log_name)
+                # Input loop
+                s_input = True
+                while s_input:
+                    s_input = input('OPTIMISE PATH: ')
+                    info('INPUT: ' + s_input)
+                    optimise(s_input, log_file=logger.log_name)
+
 
 init()

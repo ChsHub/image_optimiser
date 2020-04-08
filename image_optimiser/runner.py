@@ -11,6 +11,8 @@ from tempfile import TemporaryDirectory
 from PIL import Image
 from format_byte import format_byte
 from os.path import join, getsize, splitext
+
+from logger_default import Logger
 from send2trash import send2trash
 from timerpy import Timer
 
@@ -134,8 +136,9 @@ def run_process(*args):
     :return: Output from the optimise_image method.
     """
     file, insta_delete, log_file, index, images_len, new_type, types = args[0]
-    with Timer('OPT FILE: ' + join(*file), log_function=info):
-        result = optimise_image(file, direct_delete=insta_delete, new_type=new_type, types=types)
+    with Logger(child=True):
+        with Timer('OPT FILE: ' + join(*file), log_function=info):
+            result = optimise_image(file, direct_delete=insta_delete, new_type=new_type, types=types)
     print_progress(index, images_len)
 
     return result

@@ -1,4 +1,4 @@
-from utility.logger import Logger
+from logger_default import Logger
 from wx import BoxSizer, VERTICAL
 from wx import Frame, ID_ANY, App, EXPAND, Panel, EVT_CLOSE
 
