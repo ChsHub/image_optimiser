@@ -2,12 +2,11 @@
 Find the output image with optimal quality.
 """
 
-from math import log
 from os import remove
+from os.path import isfile
 
 from PIL import Image
 from SSIM_PIL import compare_ssim
-from os.path import isfile
 
 from image_optimiser.temporary_image import get_temp_image
 
@@ -20,6 +19,7 @@ def get_max_perception(size: (int, int)) -> float:
     """
     size = size[0] * size[1]
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
+
 
 # TODO remove logging? Analyse data
 def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
