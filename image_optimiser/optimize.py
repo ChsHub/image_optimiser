@@ -21,7 +21,6 @@ def get_max_perception(size: (int, int)) -> float:
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
 
 
-# TODO remove logging? Analyse data
 def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
     """
     Find optimal image quality using a binary search.
@@ -33,7 +32,6 @@ def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
     low, high = 36, 100  # 30, 100
     temp_file_path = ''
     target_value = get_max_perception(img.size)
-    log_data = "\n" + str(img.size) + '\t' + str(target_value)
 
     while high > low:
         # Delete previous image
@@ -52,12 +50,5 @@ def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
             high = quality - 1
         else:
             low = quality + 1
-
-        # Log data
-        log_data += '\n' + str(quality) + '\t' + str(value)
-
-    # Write log data to file
-    with open('quality+' + temp_file_path[-4:] + '.log', mode='a') as f:
-        f.write(log_data + '\n')
 
     return temp_file_path

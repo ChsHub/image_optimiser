@@ -2,7 +2,6 @@
 TODO Accept input and filter wrong arguments.
 """
 from logging import info
-from os import cpu_count
 from os import walk
 from os.path import isdir, isfile, split, abspath
 
@@ -35,9 +34,8 @@ def _add_images(path_list, depth_search):
     return result
 
 
-def optimise(image_input, types: (str,) = (".jpg", ".png", ".jpeg", ".bmp"), new_type: str = '.webp',
-             depth_search: bool = True, direct_delete: bool = False, log_file: str = None,
-             processes: int = cpu_count() // 2):
+def optimise(image_input, types: (str,) = (".jpg", ".png", ".jpeg", '.bmp', '.jfif'), new_type: str = '.webp',
+             depth_search: bool = True, direct_delete: bool = False):
     """
     Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
     :param image_input: Path, or list of paths of target directory, or image
@@ -45,9 +43,6 @@ def optimise(image_input, types: (str,) = (".jpg", ".png", ".jpeg", ".bmp"), new
     :param new_type: Type of output images. (Must be supported by PILLOW and have quality range of 1 to 100. -> .webp or .jpg)
     :param depth_search: Search in sub-directories for images.
     :param direct_delete: If True instantly delete old images. If False move old images to the recycle bin
-    :param log_file: Logging file path string.
-    :param processes: Number of parallel processes, that run the image optimization. More processes might block other
-                      programs and use more memory.
     """
 
     if type(image_input) in [str, tuple]:
@@ -55,8 +50,7 @@ def optimise(image_input, types: (str,) = (".jpg", ".png", ".jpeg", ".bmp"), new
 
     if type(image_input) == list:
         images = _add_images(image_input, depth_search)
-        convert(images, direct_delete=direct_delete, log_file=log_file, processes=processes, types=types,
-                new_type=new_type)
+        convert(images, direct_delete=direct_delete, types=types, new_type=new_type)
     else:
         info('Input invalid.')
         return
@@ -69,12 +63,11 @@ def init():
                 # Create argument parser
                 # parser = ArgumentParser(description='Process some integers.')
 
-                # Input loop
                 s_input = True
-                while s_input:
+                while s_input:  # Input loop
                     s_input = input('OPTIMISE PATH: ')
                     info('INPUT: ' + s_input)
-                    optimise(s_input, log_file=logger.log_name)
+                    optimise(s_input)
 
 
 init()

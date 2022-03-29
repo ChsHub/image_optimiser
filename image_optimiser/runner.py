@@ -1,18 +1,15 @@
 """
 Process the input images.
 """
-from concurrent.futures import ProcessPoolExecutor
 from logging import info, error, exception
 from os import remove, cpu_count
+from os.path import join, getsize, splitext
 from shutil import copyfile
 from shutil import move
 from tempfile import TemporaryDirectory
 
 from PIL import Image
 from format_byte import format_byte
-from os.path import join, getsize, splitext
-
-from logger_default import Logger
 from send2trash import send2trash
 from timerpy import Timer
 
@@ -55,16 +52,14 @@ def _has_no_alpha(image: Image) -> bool:
 
 
 def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), direct_delete: bool = False,
-                   new_type: str = '.webp') \
-        -> (int, int) or (str, str):
+                   new_type: str = '.webp') -> (int, int):
     """
     Convert image to smaller size, if possible
     :param file: Path and file name of input image
     :param types: Allowed types for input images
     :param direct_delete: True if old files should be deleted, False if old files should be move to a trash directory
     :param new_type: Type of output images.
-    :return: Size of original and new image file, Zeroes if old file can't be made smaller,
-             Input file path if exception occurred
+    :return: Size of original and new image file, Zeroes if old file can't be made smaller, or Error occured
     """
 
     # Return if image was already successfully converted
@@ -85,7 +80,6 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
             with Image.open(temp_file) as image:
 
                 if _has_no_alpha(image):
-                    info('CONVERT RGB')
                     if image.mode != 'RGB':
                         image = image.convert('RGB')
                 elif new_type != '.webp':  # Only webp supports transparency
@@ -93,8 +87,6 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
                 # no else
 
                 old_file_size = getsize(temp_file)
-                info(old_file_size)
-
                 # Get new optimized image, and retrieve size
                 new_file = find_minimum(temp_path, image, new_type)
                 new_file_size = getsize(new_file)
@@ -124,75 +116,29 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
         exception(e)
 
     error(str(file))
-    return file
+    return 0, 0
 
 
-def run_process(*args):
-    """
-    Optimize a single image.
-    :param args: Arguments for the optimise_image method.
-    :return: Output from the optimise_image method.
-    """
-    file, instant_delete, log_file, index, images_len, new_type, types = args[0]
-    with Logger(child=True):
-        with Timer('OPT FILE: ' + join(*file), log_function=info):
-            result = optimise_image(file, direct_delete=instant_delete, new_type=new_type, types=types)
-    print_progress(index, images_len)
-
-    return result
-
-
-def _map_convert(map_function, images, direct_delete, log_file, new_type, total_old_size, total_new_size, types):
-    # Set arguments for each process
-    images = map_function(run_process, zip(images, [direct_delete] * len(images),
-                                           [log_file] * len(images),
-                                           range(1, len(images) + 1),
-                                           [len(images) + 1] * len(images),
-                                           [new_type] * len(images),
-                                           [types] * len(images)))
-    images = list(images)  # Converting to list triggers execution
-    sizes = list(filter(lambda x: type(x[0]) == int, images))  # Filter successful terminated
-    if sizes:
-        total_old_size1, total_new_size1 = zip(*sizes)
-        total_old_size += sum(total_old_size1)
-        total_new_size += sum(total_new_size1)
-    images = list(filter(lambda x: type(x[0]) == str, images))  # Filter failed
-    return images, total_old_size, total_new_size
-
-
-def convert(images: list, direct_delete: bool = False, log_file: str = None, processes: int = cpu_count() // 2,
-            types=(".jpg", ".png", ".jpeg"), new_type: str = '.webp'):
+def convert(images: list, direct_delete: bool = False, types=(".jpg", ".png", ".jpeg"), new_type: str = '.webp'):
     """
     Optimize images for smaller sizes in directory and sub-directories. May convert to jpg or webp.
     :param images: Target images.
     :param direct_delete: If True instantly delete old images. If False move old images to the OS's trash directory
-    :param log_file: Logging file path string.
-    :param processes: Number of parallel processes, that run the image optimization. More processes might block other
-                      programs and use more memory.
     :param types: Types of input images. (Must be supported by PIL)
     :param new_type: Type of output images.
     """
 
     with Timer("CONVERT", log_function=info):
-
         info("FILES: " + str(len(images)))
         total_old_size = 0
         total_new_size = 0
-        processes = min(processes, len(images))
-
-        # If there are images convert them
+        total_images = len(images) - 1
         if images:
-            for processes in list({processes, 1}):
-                with ProcessPoolExecutor(max_workers=processes) as executor:
-                    images, total_old_size, total_new_size = _map_convert(executor.map, images, direct_delete, log_file,
-                                                                          new_type, total_old_size, total_new_size,
-                                                                          types)
+            for i, file in enumerate(images):
+                old_file_size, new_file_size = optimise_image(file, direct_delete=direct_delete, new_type=new_type,
+                                                              types=types)
+                total_old_size += old_file_size
+                total_new_size += new_file_size
+                print_progress(iteration=i, total=total_images, prefix=format_byte(total_old_size - total_new_size))
 
-            print_progress(iteration=1, total=1)
-            print()
-
-        # No else
-
-        info("FAILED: " + str(len(images)) + ' FILES')
-        info("FAILED: " + str(images))
         info("SAVED: " + format_byte(total_old_size - total_new_size))
