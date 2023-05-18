@@ -2,8 +2,8 @@
 Process the input images.
 """
 from logging import info, error, exception
-from os import remove, cpu_count
-from os.path import join, getsize, splitext
+from os import remove
+from pathlib import Path
 from shutil import copyfile
 from shutil import move
 from tempfile import TemporaryDirectory
@@ -51,6 +51,49 @@ def _has_no_alpha(image: Image) -> bool:
     return True
 
 
+def delete_larger(file: Path, new_file: Path, delete_method, new_type: str):
+    old_file_size = file.stat().st_size
+    new_file_size = new_file.stat().st_size
+
+    if old_file_size <= new_file_size:
+        info("OLD FILE SMALLER")
+        return 0, 0
+
+    # Delete old file or move to trash
+    try:
+        delete_method(file)
+    except Exception as e:
+        exception(e)  # Log OSError
+
+    # Replace the old file
+    move(new_file, file.with_suffix(new_type))
+    return old_file_size, new_file_size
+
+
+def _covert_image(temp_path, temp_file: Path, new_type, direct_delete: bool, file: Path) -> (int, int):
+    """
+    Convert the image to the new type
+    :param temp_path:
+    :param temp_file: Copy of original image
+    :param new_type:
+    :param direct_delete:
+    :param file:
+    :param file_name:
+    :return:
+    """
+    with Image.open(temp_file) as image:
+
+        supports_transparency = new_type.endswith('webp')
+        if _has_no_alpha(image):
+            image = image if image.mode == 'RGB' else image.convert('RGB')
+        elif not supports_transparency:
+            return 0, 0
+
+        # Get new optimized image, and retrieve size
+        new_file = find_minimum(temp_path, image, new_type)
+        return delete_larger(file, new_file, remove if direct_delete else send2trash, new_type)
+
+
 def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), direct_delete: bool = False,
                    new_type: str = '.webp') -> (int, int):
     """
@@ -66,48 +109,17 @@ def optimise_image(file: (str, str), types: (str,) = (".jpg", ".png", ".jpeg"), 
     if type(file[0]) == int:
         return file
 
-    file_name, extension = splitext(file[1])
+    file = Path(*file)
 
-    if not extension.lower() in types:
+    if not file.suffix.lower() in types:
         return 0, 0
 
     try:
+        # Copy file into temporary directory
         with TemporaryDirectory() as temp_path:
-            # Copy file into temporary directory
-            temp_file = join(temp_path, 'a' + extension)
-            copyfile(join(*file), temp_file)
-
-            with Image.open(temp_file) as image:
-
-                if _has_no_alpha(image):
-                    if image.mode != 'RGB':
-                        image = image.convert('RGB')
-                elif new_type != '.webp':  # Only webp supports transparency
-                    return 0, 0
-                # no else
-
-                old_file_size = getsize(temp_file)
-                # Get new optimized image, and retrieve size
-                new_file = find_minimum(temp_path, image, new_type)
-                new_file_size = getsize(new_file)
-
-                if old_file_size <= new_file_size:
-                    info("OLD FILE SMALLER")
-                    return 0, 0
-
-                # Delete old file or move to trash
-                if direct_delete:
-                    remove(join(*file))
-                else:
-                    try:
-                        send2trash(join(*file))
-                    except Exception as e:
-                        exception(e)  # Log OSError
-
-                # Replace the old file
-                move(new_file, join(file[0], file_name + new_type))  # TODO make changeable type .webp
-
-                return old_file_size, new_file_size
+            temp_file = Path(temp_path, 'a' + file.suffix)
+            copyfile(file, temp_file)
+            return _covert_image(temp_path, temp_file, new_type, direct_delete, file)
 
     except MemoryError as e:
         exception(e)
@@ -132,13 +144,16 @@ def convert(images: list, direct_delete: bool = False, types=(".jpg", ".png", ".
         info("FILES: " + str(len(images)))
         total_old_size = 0
         total_new_size = 0
-        total_images = len(images) - 1
-        if images:
-            for i, file in enumerate(images):
-                old_file_size, new_file_size = optimise_image(file, direct_delete=direct_delete, new_type=new_type,
-                                                              types=types)
-                total_old_size += old_file_size
-                total_new_size += new_file_size
-                print_progress(iteration=i, total=total_images, prefix=format_byte(total_old_size - total_new_size))
+        total_images = len(images)
+        if not images:
+            info('No Images found')
+            return
+
+        for i, file in enumerate(images):
+            old_file_size, new_file_size = optimise_image(file, direct_delete=direct_delete, new_type=new_type,
+                                                          types=types)
+            total_old_size += old_file_size
+            total_new_size += new_file_size
+            print_progress(iteration=i, total=total_images, prefix=format_byte(total_old_size - total_new_size))
 
         info("SAVED: " + format_byte(total_old_size - total_new_size))

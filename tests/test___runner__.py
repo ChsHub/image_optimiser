@@ -1,6 +1,6 @@
 from os.path import splitext
 
-from MockImage import MockImage
+from mock_image import MockImage
 from PIL.Image import merge
 from hypothesis import given, settings
 from hypothesis.strategies import text, integers, booleans

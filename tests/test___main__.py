@@ -1,11 +1,11 @@
 from os.path import exists, join
 
-from MockImage import MockImage
 from hypothesis import given, settings
 from hypothesis.strategies import booleans
 
 from image_optimiser import optimise
 from image_optimiser.__main__ import _add_images
+from mock_image import MockImage
 
 
 @settings(deadline=None)
@@ -40,7 +40,7 @@ def test_init():
     import image_optimiser.__main__ as main
     main.__name__ = '__main__'
 
-    def optimise_stub(image_input, log_file):
+    def optimise_stub(image_input):
         raise SystemExit
 
     main.optimise = optimise_stub

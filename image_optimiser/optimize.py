@@ -4,6 +4,7 @@ Find the output image with optimal quality.
 
 from os import remove
 from os.path import isfile
+from pathlib import Path
 
 from PIL import Image
 from SSIM_PIL import compare_ssim
@@ -21,7 +22,7 @@ def get_max_perception(size: (int, int)) -> float:
     return 0.997 - min(0.05, ((size - 741104) / 300000000))
 
 
-def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
+def find_minimum(temp_path: str, img: Image, new_type: str) -> Path:
     """
     Find optimal image quality using a binary search.
     :param temp_path:
@@ -51,4 +52,4 @@ def find_minimum(temp_path: str, img: Image, new_type: str) -> str:
         else:
             low = quality + 1
 
-    return temp_file_path
+    return Path(temp_file_path)
